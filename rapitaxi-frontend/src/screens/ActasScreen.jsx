@@ -1,0 +1,151 @@
+import React, { useState } from 'react';
+import { FileText, Printer, Loader2, AlertCircle } from 'lucide-react';
+
+const ActasScreen = () => {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const generarPrevisualizacion = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch('http://localhost:8000/api/reportes/cuadro-maestro', {
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json' 
+        }
+      });
+      if (response.ok) {
+        setData(await response.json());
+      } else {
+        setError('Error al generar los datos del reporte.');
+      }
+    } catch (err) { setError('Error de conexión con el servidor.'); }
+    finally { setLoading(false); }
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="p-8 lg:p-10 bg-slate-50 min-h-screen relative">
+      
+      {/* =========================================
+          SECCIÓN NO IMPRIMIBLE: Controles (Dashboard)
+          ========================================= */}
+      <div className="print:hidden">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800">Generador de Reportes</h2>
+            <p className="text-slate-500 mt-1">Generación de documentos oficiales y matriz de flota.</p>
+          </div>
+          <div className="flex gap-4">
+            <button 
+              onClick={generarPrevisualizacion} disabled={loading}
+              className="bg-slate-900 text-yellow-400 px-6 py-3 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-all shadow-md"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <FileText className="w-5 h-5 mr-2" />} 
+              Cargar Cuadro Maestro
+            </button>
+            {data.length > 0 && (
+              <button 
+                onClick={handlePrint}
+                className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center hover:bg-green-700 transition-all shadow-md"
+              >
+                <Printer className="w-5 h-5 mr-2" /> Imprimir / PDF
+              </button>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl flex items-center border border-red-100">
+            <AlertCircle className="w-5 h-5 mr-2" /> {error}
+          </div>
+        )}
+
+        {data.length === 0 && !loading && (
+          <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-20 text-center text-slate-400">
+             <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
+             <p className="text-lg font-medium">No hay una previsualización activa.</p>
+             <p className="text-sm">Haz clic en el botón oscuro para cargar la matriz de flota actual.</p>
+          </div>
+        )}
+      </div>
+
+      {/* =========================================
+          SECCIÓN IMPRIMIBLE: El Documento Oficial
+          ========================================= */}
+      {data.length > 0 && (
+        <div className="bg-white shadow-xl p-8 md:p-12 rounded-3xl mx-auto max-w-5xl print:shadow-none print:p-0 print:w-full print:m-0">
+          
+          {/* Encabezado oficial */}
+          <div className="text-center mb-8 border-b-2 border-slate-900 pb-4">
+            <h1 className="text-2xl font-black uppercase tracking-widest text-slate-900">Compañía RapitaxisMontecristi S.A.</h1>
+            <p className="text-sm font-bold text-slate-600 mt-1">CUADRO MAESTRO DE FLOTA VEHICULAR</p>
+            <p className="text-[10px] text-slate-400 mt-1 italic print:hidden">Generado el: {new Date().toLocaleString()}</p>
+          </div>
+
+          <table className="w-full border-collapse border border-slate-900 text-xs">
+            <thead>
+              <tr className="bg-slate-100 print:bg-gray-200">
+                <th className="border border-slate-900 p-2 text-center uppercase">N° Vehi</th>
+                <th className="border border-slate-900 p-2 text-center uppercase">Placa</th>
+                <th className="border border-slate-900 p-2 text-left uppercase">Nombre Accionista</th>
+                <th className="border border-slate-900 p-2 text-center uppercase">Año Model</th>
+                <th className="border border-slate-900 p-2 text-center uppercase">Ult. Revision</th>
+                <th className="border border-slate-900 p-2 text-left uppercase">Obs.</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((row, i) => (
+                <tr key={i}>
+                  <td className="border border-slate-900 p-2 font-bold text-center">{row.numero_vehiculo || '---'}</td>
+                  <td className="border border-slate-900 p-2 font-mono text-center">{row.placa || '---'}</td>
+                  <td className="border border-slate-900 p-2 font-medium">{row.accionista}</td>
+                  <td className="border border-slate-900 p-2 text-center">{row.anio_model || '---'}</td>
+                  <td className="border border-slate-900 p-2 text-center text-red-600 font-bold uppercase print:text-black">
+                    {row.fecha_ult_revision 
+                      ? new Date(row.fecha_ult_revision).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) 
+                      : 'Sin RTV'}
+                  </td>
+                  <td className="border border-slate-900 p-2 italic text-[10px]">{row.observaciones || ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Firmas al pie (Solo visibles en impresión o PDF) */}
+          <div className="mt-24 flex justify-around print:flex hidden">
+            <div className="text-center">
+              <div className="w-48 border-t border-slate-900 mb-2 mx-auto"></div>
+              <p className="text-[10px] font-bold">GERENCIA GENERAL</p>
+            </div>
+            <div className="text-center">
+              <div className="w-48 border-t border-slate-900 mb-2 mx-auto"></div>
+              <p className="text-[10px] font-bold">SECRETARÍA</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ESTILOS GLOBALES PARA LA IMPRESIÓN */}
+      <style>{`
+        @media print {
+          body { background: white !important; margin: 0; padding: 0; }
+          /* Oculta la barra lateral si el layout general la tiene */
+          aside, nav, header { display: none !important; }
+          main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+          .print\\:hidden { display: none !important; }
+          .print\\:flex { display: flex !important; }
+          @page { size: landscape; margin: 1cm; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default ActasScreen;
