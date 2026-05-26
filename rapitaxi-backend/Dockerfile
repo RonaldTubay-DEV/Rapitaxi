@@ -29,4 +29,4 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 # Copiar configuración de Nginx (si aplica) o usar el servidor integrado para pruebas rápidas
 EXPOSE 80
 
-CMD php artisan serve --host=0.0.0.0 --port=80
+CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=80
