@@ -2,8 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   CarFront, LayoutDashboard, Users, Wrench, FolderOpen, 
-  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign 
-} from 'lucide-react'; // <--- AQUÍ ESTABA EL ERROR: Faltaba DollarSign
+  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings 
+} from 'lucide-react';
+
+// IMPORTAMOS TU NUEVO COMPONENTE DE NOTIFICACIONES
+// (Asegúrate de que la ruta sea correcta según donde guardaste el archivo)
+import NotificacionesBell from './NotificacionesBell'; 
 
 const MainLayout = () => {
   const navigate = useNavigate();
@@ -30,6 +34,7 @@ const MainLayout = () => {
     { icon: ClipboardCheck, label: 'Revisiones', path: '/revisiones' },
     { icon: DollarSign, label: 'Aportaciones', path: '/aportaciones' },
     { icon: BookOpen, label: 'Libros Contables', path: '/libros-contables' },
+    { icon: Settings, label: 'Configuración', path: '/configuracion' }, 
   ];
 
   return (
@@ -76,9 +81,28 @@ const MainLayout = () => {
         </div>
       </aside>
 
-      {/* CONTENIDO DINÁMICO */}
-      <main className="flex-1 overflow-y-auto">
-        <Outlet /> 
+      {/* CONTENIDO PRINCIPAL: Ahora dividido en TopBar y el Outlet */}
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        
+        {/* NUEVA BARRA SUPERIOR (TOP BAR) */}
+        <header className="h-20 bg-slate-50 flex items-center justify-end px-8 flex-shrink-0 z-10">
+          <div className="flex items-center gap-4">
+            {/* AQUÍ VA TU COMPONENTE DE CAMPANITA */}
+            <NotificacionesBell />
+            
+            {/* Opcional: Info del usuario */}
+            <div className="hidden md:flex flex-col text-right ml-2 border-l border-slate-200 pl-4">
+              <span className="text-sm font-bold text-slate-800">Administración</span>
+              <span className="text-xs text-slate-500 font-medium">En línea</span>
+            </div>
+          </div>
+        </header>
+
+        {/* CONTENIDO DINÁMICO (LAS PANTALLAS) */}
+        <div className="flex-1 overflow-y-auto">
+          <Outlet /> 
+        </div>
+        
       </main>
     </div>
   );

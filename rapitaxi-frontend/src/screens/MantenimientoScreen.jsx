@@ -169,6 +169,12 @@ const MantenimientoScreen = () => {
         setMantenimientos([result.mantenimiento, ...mantenimientos]);
         setIsModalOpen(false);
         setFile(null);
+        
+        // ==========================================
+        // EVENTO GLOBAL: AVISAR A LA CAMPANITA
+        // ==========================================
+        window.dispatchEvent(new Event('notificacion_creada'));
+        
       } else {
         const errorData = await response.json();
         setFormError(errorData.message || 'Error al guardar.');

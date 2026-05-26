@@ -17,12 +17,24 @@ const ActasScreen = () => {
             'Accept': 'application/json' 
         }
       });
+      
       if (response.ok) {
         setData(await response.json());
       } else {
-        setError('Error al generar los datos del reporte.');
+        // AQUÍ ESTÁ LA MAGIA: Capturamos el error real del backend
+        const errorData = await response.json();
+        console.error("DETALLE DEL ERROR:", errorData);
+        
+        // Si el backend mandó el error_real_de_sql, lo mostramos en pantalla
+        if (errorData.error_real_de_sql) {
+            setError(`Error SQL: ${errorData.error_real_de_sql}`);
+        } else {
+            setError(errorData.message || 'Error al generar los datos del reporte.');
+        }
       }
-    } catch (err) { setError('Error de conexión con el servidor.'); }
+    } catch (err) { 
+      setError('Error de conexión con el servidor.'); 
+    }
     finally { setLoading(false); }
   };
 
@@ -63,7 +75,8 @@ const ActasScreen = () => {
 
         {error && (
           <div className="mb-6 bg-red-50 text-red-600 p-4 rounded-xl flex items-center border border-red-100">
-            <AlertCircle className="w-5 h-5 mr-2" /> {error}
+            <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" /> 
+            <span className="font-mono text-sm break-all">{error}</span>
           </div>
         )}
 
@@ -80,7 +93,7 @@ const ActasScreen = () => {
           SECCIÓN IMPRIMIBLE: El Documento Oficial
           ========================================= */}
       {data.length > 0 && (
-        <div className="bg-white shadow-xl p-8 md:p-12 rounded-3xl mx-auto max-w-5xl print:shadow-none print:p-0 print:w-full print:m-0">
+        <div className="bg-white shadow-xl p-8 md:p-12 rounded-3xl mx-auto max-w-6xl print:shadow-none print:p-0 print:w-full print:m-0">
           
           {/* Encabezado oficial */}
           <div className="text-center mb-8 border-b-2 border-slate-900 pb-4">
@@ -97,6 +110,7 @@ const ActasScreen = () => {
                 <th className="border border-slate-900 p-2 text-left uppercase">Nombre Accionista</th>
                 <th className="border border-slate-900 p-2 text-center uppercase">Año Model</th>
                 <th className="border border-slate-900 p-2 text-center uppercase">Ult. Revision</th>
+                <th className="border border-slate-900 p-2 text-center uppercase">Aportaciones</th>
                 <th className="border border-slate-900 p-2 text-left uppercase">Obs.</th>
               </tr>
             </thead>
@@ -107,10 +121,13 @@ const ActasScreen = () => {
                   <td className="border border-slate-900 p-2 font-mono text-center">{row.placa || '---'}</td>
                   <td className="border border-slate-900 p-2 font-medium">{row.accionista}</td>
                   <td className="border border-slate-900 p-2 text-center">{row.anio_model || '---'}</td>
-                  <td className="border border-slate-900 p-2 text-center text-red-600 font-bold uppercase print:text-black">
+                  <td className="border border-slate-900 p-2 text-center text-slate-600 uppercase">
                     {row.fecha_ult_revision 
                       ? new Date(row.fecha_ult_revision).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }) 
                       : 'Sin RTV'}
+                  </td>
+                  <td className={`border border-slate-900 p-2 text-center font-bold uppercase print:text-black ${row.estado_aportacion === 'Al día' ? 'text-green-600' : 'text-red-600'}`}>
+                    {row.estado_aportacion}
                   </td>
                   <td className="border border-slate-900 p-2 italic text-[10px]">{row.observaciones || ''}</td>
                 </tr>
@@ -136,7 +153,6 @@ const ActasScreen = () => {
       <style>{`
         @media print {
           body { background: white !important; margin: 0; padding: 0; }
-          /* Oculta la barra lateral si el layout general la tiene */
           aside, nav, header { display: none !important; }
           main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
           .print\\:hidden { display: none !important; }

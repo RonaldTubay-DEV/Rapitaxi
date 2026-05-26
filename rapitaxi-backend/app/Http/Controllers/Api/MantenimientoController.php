@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mantenimiento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Notificacion; 
 
 class MantenimientoController extends Controller
 {
@@ -24,11 +25,11 @@ class MantenimientoController extends Controller
             'vehiculo_id'              => 'required|exists:vehiculos,id',
             'fecha_mantenimiento'      => 'required|date',
             'tipo_mantenimiento'       => 'required|string|max:255',
-            'mecanico'                 => 'nullable|string|max:100', // <-- Agregado
+            'mecanico'                 => 'nullable|string|max:100',
             'kilometraje_actual'       => 'required|integer|min:0',
             'proximo_mantenimiento_km' => 'nullable|integer|min:0',
             'costo'                    => 'required|numeric|min:0',
-            'estado'                   => 'required|in:Completado,En Proceso,Programado', // <-- Actualizado
+            'estado'                   => 'required|in:Completado,En Proceso,Programado',
             'observaciones'            => 'nullable|string',
             'comprobante'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
@@ -44,6 +45,16 @@ class MantenimientoController extends Controller
 
         $mantenimiento = Mantenimiento::create($datos);
         $mantenimiento->load('vehiculo.socio');
+
+        // ==========================================
+        // LÓGICA REACTIVA: DISPARAR NOTIFICACIÓN AUTOMÁTICA
+        // ==========================================
+        Notificacion::create([
+            'tipo' => 'info', // Esto pintará el icono azul en tu campana
+            'titulo' => 'Ingreso a Taller',
+            'mensaje' => "El vehículo unidad {$mantenimiento->vehiculo->numero_vehiculo} ha ingresado por: {$mantenimiento->tipo_mantenimiento}.",
+            'leida' => false
+        ]);
 
         return response()->json([
             'message' => 'Mantenimiento registrado con éxito.',

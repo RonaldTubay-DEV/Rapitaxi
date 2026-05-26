@@ -11,12 +11,14 @@ use App\Http\Controllers\Api\RevisionController;
 use App\Http\Controllers\Api\MantenimientoController;
 use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\LibroContableController;// ... dentro del middleware('auth:sanctum')
-    Route::apiResource('revisiones', RevisionController::class);
+use App\Http\Controllers\Api\LibroContableController;
+use App\Http\Controllers\Api\NotificacionController;
+use App\Http\Controllers\Api\ConfiguracionMantenimientoController;
+
 // Endpoint público para el inicio de sesión
 Route::post('/login', [AuthController::class, 'login']);
 
-// Rutas protegidas (Requieren el token de Sanctum)
+// Rutas protegidas
 Route::middleware('auth:sanctum')->group(function () {
     
     // Ruta por defecto para obtener el usuario autenticado
@@ -24,16 +26,22 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
-    // Rutas CRUD para la gestión de socios (index, store, show, update, destroy)
     Route::apiResource('socios', SocioController::class);
-
     Route::apiResource('aportaciones', AportacionController::class)->only(['index', 'store', 'destroy']);
     Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
     Route::apiResource('vehiculos', VehiculoController::class);
     Route::apiResource('revisiones', RevisionController::class);
     Route::apiResource('mantenimientos', MantenimientoController::class)->only(['index', 'store', 'update', 'destroy']);    
+    
     Route::get('/reportes/cuadro-maestro', [ReporteController::class, 'cuadroMaestro']);
     Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
     Route::apiResource('libros-contables', LibroContableController::class)->only(['index', 'store', 'destroy']);
     
+    // Rutas de Notificaciones y Configuración
+    Route::get('notificaciones', [NotificacionController::class, 'index']);
+    Route::put('notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida']);
+    Route::put('notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas']);
+    
+    Route::get('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'index']);
+    Route::put('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'update']);
 });
