@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save } from 'lucide-react';
-
+import { API_URL } from '../apiConfig';
 const SociosScreen = () => {
   // ==========================================
   // ESTADOS
@@ -36,8 +36,8 @@ const SociosScreen = () => {
     try {
       const token = localStorage.getItem('auth_token');
       const url = query 
-        ? `http://localhost:8000/api/socios?search=${encodeURIComponent(query)}` 
-        : 'http://localhost:8000/api/socios';
+        ? `${API_URL}/socios?search=${encodeURIComponent(query)}` 
+        : `${API_URL}/socios`;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -110,7 +110,7 @@ const SociosScreen = () => {
     };
 
     const isEditing = editingId !== null;
-    const url = isEditing ? `http://localhost:8000/api/socios/${editingId}` : 'http://localhost:8000/api/socios';
+    const url = isEditing ? `${API_URL}/socios/${editingId}` : `${API_URL}/socios`;
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
@@ -152,7 +152,7 @@ const SociosScreen = () => {
     if (!window.confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/socios/${id}`, {
+      const response = await fetch(`${API_URL}/socios/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

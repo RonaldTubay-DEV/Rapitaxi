@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Upload, Trash2, Loader2, AlertCircle, FileText, X, Save, Search, Download } from 'lucide-react';
-
+import { API_URL } from '../apiConfig';
 const LibrosContablesScreen = () => {
   const [libros, setLibros] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,7 +22,7 @@ const LibrosContablesScreen = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/libros-contables', {
+      const response = await fetch(`${API_URL}/libros-contables`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) setLibros(await response.json());
@@ -50,7 +50,7 @@ const LibrosContablesScreen = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/libros-contables', {
+      const response = await fetch(`${API_URL}/libros-contables`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
         body: data
@@ -74,7 +74,7 @@ const LibrosContablesScreen = () => {
     if (!window.confirm('¿Eliminar este libro contable permanentemente?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/libros-contables/${id}`, {
+      await fetch(`${API_URL}/libros-contables/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bell, AlertTriangle, Info, X, Settings, CheckCircle2 } from 'lucide-react';
-
+import { API_URL } from '../apiConfig';
 const NotificacionesBell = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [notificaciones, setNotificaciones] = useState([]);
@@ -24,7 +24,7 @@ const NotificacionesBell = () => {
   const fetchNotificaciones = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/notificaciones', {
+      const response = await fetch(`${API_URL}/notificaciones`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) {
@@ -65,7 +65,7 @@ const NotificacionesBell = () => {
   const marcarComoLeida = async (id) => {
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/notificaciones/${id}/leer`, {
+      await fetch(`${API_URL}/notificaciones/${id}/leer`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -77,7 +77,7 @@ const NotificacionesBell = () => {
   const limpiarTodas = async () => {
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/notificaciones/leer-todas`, {
+      await fetch(`${API_URL}/notificaciones/leer-todas`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}` }
       });

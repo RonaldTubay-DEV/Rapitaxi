@@ -3,6 +3,7 @@ import {
   Wrench, Search, Trash2, Loader2, AlertCircle, X, Save, 
   Gauge, FileText, Upload, BatteryCharging, CircleDot
 } from 'lucide-react';
+import { API_URL } from '../apiConfig';
 
 const MantenimientoScreen = () => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -48,8 +49,8 @@ const MantenimientoScreen = () => {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
       const [resM, resV] = await Promise.all([
-        fetch('http://localhost:8000/api/mantenimientos', { headers }),
-        fetch('http://localhost:8000/api/vehiculos', { headers })
+        fetch(`${API_URL}/mantenimientos`, { headers }),
+        fetch(`${API_URL}/vehiculos`, { headers })
       ]);
       if (resM.ok && resV.ok) {
         setMantenimientos(await resM.json());
@@ -158,7 +159,7 @@ const MantenimientoScreen = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/mantenimientos', {
+      const response = await fetch(`${API_URL}/mantenimientos`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
         body: data
@@ -187,7 +188,7 @@ const MantenimientoScreen = () => {
     if (!window.confirm('¿Eliminar este registro permanentemente?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/mantenimientos/${id}`, {
+      const response = await fetch(`${API_URL}/mantenimientos/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -217,13 +218,13 @@ const MantenimientoScreen = () => {
         data.append('comprobante', archivoAdjunto);
         data.append('_method', 'PUT'); 
 
-        response = await fetch(`http://localhost:8000/api/mantenimientos/${id}`, {
+        response = await fetch(`${API_URL}/mantenimientos/${id}`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
           body: data
         });
       } else {
-        response = await fetch(`http://localhost:8000/api/mantenimientos/${id}`, {
+        response = await fetch(`${API_URL}/mantenimientos/${id}`, {
           method: 'PUT',
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -317,6 +318,11 @@ const MantenimientoScreen = () => {
     }
   };
 
+  // Función para obtener la URL correcta del archivo subido
+  const getStorageUrl = (ruta) => {
+    return API_URL.replace('/api', '/storage/') + ruta;
+  };
+
   return (
     <div className="p-8 lg:p-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
@@ -404,7 +410,7 @@ const MantenimientoScreen = () => {
                 <td className="p-4">
                   <div className="font-bold text-green-600">${parseFloat(m.costo).toFixed(2)}</div>
                   {m.comprobante_ruta && (
-                    <a href={`http://localhost:8000/storage/${m.comprobante_ruta}`} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 flex items-center mt-1 hover:underline">
+                    <a href={getStorageUrl(m.comprobante_ruta)} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 flex items-center mt-1 hover:underline">
                       <FileText className="w-3 h-3 mr-1" /> Ver Factura
                     </a>
                   )}

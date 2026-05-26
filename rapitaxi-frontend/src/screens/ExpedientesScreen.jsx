@@ -3,6 +3,7 @@ import {
   Users, FolderOpen, Search, FileText, Image as ImageIcon, 
   Upload, Trash2, Loader2, AlertCircle, X, ExternalLink, File
 } from 'lucide-react';
+import { API_URL } from '../apiConfig';
 
 const ExpedientesScreen = () => {
   // Estados para Socios (Izquierda)
@@ -27,7 +28,7 @@ const ExpedientesScreen = () => {
     const fetchSocios = async () => {
       try {
         const token = localStorage.getItem('auth_token');
-        const response = await fetch('http://localhost:8000/api/socios', {
+        const response = await fetch(`${API_URL}/socios`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (response.ok) {
@@ -48,7 +49,7 @@ const ExpedientesScreen = () => {
         setIsLoading(true);
         try {
           const token = localStorage.getItem('auth_token');
-          const response = await fetch(`http://localhost:8000/api/expedientes?socio_id=${selectedSocio.id}`, {
+          const response = await fetch(`${API_URL}/expedientes?socio_id=${selectedSocio.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           if (response.ok) {
@@ -80,7 +81,7 @@ const ExpedientesScreen = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/expedientes', {
+      const response = await fetch(`${API_URL}/expedientes`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }, // NO poner Content-Type, el navegador lo hará solo
         body: formData
@@ -103,7 +104,7 @@ const ExpedientesScreen = () => {
     if (!window.confirm('¿Eliminar este documento permanentemente?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/expedientes/${id}`, {
+      const response = await fetch(`${API_URL}/expedientes/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

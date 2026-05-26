@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from '../apiConfig';
 
 const LoginScreen = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ const LoginScreen = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/login', {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -3,7 +3,7 @@ import {
   ClipboardCheck, Search, Edit, Trash2, Loader2, AlertCircle, 
   X, Save, Plus, Calendar, CheckCircle, XCircle, Clock 
 } from 'lucide-react';
-
+import { API_URL } from '../apiConfig';
 const RevisionesScreen = () => {
   // ==========================================
   // ESTADOS
@@ -51,8 +51,8 @@ const RevisionesScreen = () => {
       const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
 
       const [resRevisiones, resVehiculos] = await Promise.all([
-        fetch('http://localhost:8000/api/revisiones', { headers }),
-        fetch('http://localhost:8000/api/vehiculos', { headers })
+        fetch(`${API_URL}/revisiones`, { headers }),
+        fetch(`${API_URL}/vehiculos`, { headers })
       ]);
 
       if (resRevisiones.ok && resVehiculos.ok) {
@@ -131,7 +131,7 @@ const RevisionesScreen = () => {
     }
 
     const isEditing = editingId !== null;
-    const url = isEditing ? `http://localhost:8000/api/revisiones/${editingId}` : 'http://localhost:8000/api/revisiones';
+    const url = isEditing ? `${API_URL}/revisiones/${editingId}` : `${API_URL}/revisiones`;
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
@@ -165,7 +165,7 @@ const RevisionesScreen = () => {
     if (!window.confirm('¿Eliminar este registro legal permanentemente?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/revisiones/${id}`, {
+      const response = await fetch(`${API_URL}/revisiones/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

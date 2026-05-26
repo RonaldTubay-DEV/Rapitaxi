@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, Plus } from 'lucide-react';
-
+import { API_URL } from '../apiConfig';
 const VehiculosScreen = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [socios, setSocios] = useState([]); // Para el selector
@@ -30,8 +30,8 @@ const VehiculosScreen = () => {
       const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
       
       const [resVehiculos, resSocios] = await Promise.all([
-        fetch('http://localhost:8000/api/vehiculos', { headers }),
-        fetch('http://localhost:8000/api/socios', { headers }) // Necesitamos la lista de socios
+        fetch(`${API_URL}/vehiculos`, { headers }),
+        fetch(`${API_URL}/socios`, { headers }) // Necesitamos la lista de socios
       ]);
 
       if (resVehiculos.ok && resSocios.ok) {
@@ -80,7 +80,7 @@ const VehiculosScreen = () => {
     setFormError('');
 
     const isEditing = editingId !== null;
-    const url = isEditing ? `http://localhost:8000/api/vehiculos/${editingId}` : 'http://localhost:8000/api/vehiculos';
+    const url = isEditing ? `${API_URL}/vehiculos/${editingId}` : `${API_URL}/vehiculos`;
     const method = isEditing ? 'PUT' : 'POST';
 
     try {
@@ -111,7 +111,7 @@ const VehiculosScreen = () => {
     if (!window.confirm('¿Eliminar este vehículo del sistema?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch(`http://localhost:8000/api/vehiculos/${id}`, {
+      const response = await fetch(`${API_URL}/vehiculos/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

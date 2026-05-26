@@ -3,7 +3,7 @@ import {
   Users, Car, Wrench, ShieldCheck, TrendingUp, 
   Clock, AlertTriangle, Loader2, DollarSign 
 } from 'lucide-react';
-
+import { API_URL } from '../apiConfig';
 const DashboardScreen = () => {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -13,7 +13,7 @@ const DashboardScreen = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/dashboard/stats', {
+      const response = await fetch(`${API_URL}/dashboard/stats`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       

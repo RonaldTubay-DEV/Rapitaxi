@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Save, Loader2, AlertCircle, CheckCircle2, Sliders, Calendar, Gauge } from 'lucide-react';
+import { API_URL } from '../apiConfig';
 
 const ConfiguracionScreen = () => {
   const [configuraciones, setConfiguraciones] = useState([]);
@@ -11,7 +12,7 @@ const ConfiguracionScreen = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/configuraciones-mantenimiento', {
+      const response = await fetch(`${API_URL}/configuraciones-mantenimiento`, {
         headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
       });
       if (response.ok) {
@@ -42,7 +43,7 @@ const ConfiguracionScreen = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/configuraciones-mantenimiento', {
+      const response = await fetch(`${API_URL}/configuraciones-mantenimiento`, {
         method: 'PUT',
         headers: { 
           'Authorization': `Bearer ${token}`, 

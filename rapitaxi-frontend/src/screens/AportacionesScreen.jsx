@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar } from 'lucide-react';
+import { API_URL } from '../apiConfig';
 
 const AportacionesScreen = () => {
   // ==========================================
@@ -41,8 +42,8 @@ const AportacionesScreen = () => {
 
       // Conexión a la nueva ruta /api/aportaciones
       const [resAportaciones, resSocios] = await Promise.all([
-        fetch('http://localhost:8000/api/aportaciones', { headers }),
-        fetch('http://localhost:8000/api/socios', { headers })
+        fetch(`${API_URL}/aportaciones`, { headers }),
+        fetch(`${API_URL}/socios`, { headers })
       ]);
 
       if (resAportaciones.ok && resSocios.ok) {
@@ -80,7 +81,7 @@ const AportacionesScreen = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/aportaciones', {
+      const response = await fetch('${API_URL}/aportaciones', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -108,7 +109,7 @@ const AportacionesScreen = () => {
     if (!window.confirm('¿Anular esta aportación?')) return;
     try {
       const token = localStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/aportaciones/${id}`, {
+      await fetch(`${API_URL}/aportaciones/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

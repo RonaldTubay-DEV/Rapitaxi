@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileText, Printer, Loader2, AlertCircle } from 'lucide-react';
+import { API_URL } from '../apiConfig';
 
 const ActasScreen = () => {
   const [data, setData] = useState([]);
@@ -11,7 +12,7 @@ const ActasScreen = () => {
     setError('');
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('http://localhost:8000/api/reportes/cuadro-maestro', {
+      const response = await fetch(`${API_URL}/reportes/cuadro-maestro`, {
         headers: { 
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json' 
@@ -21,11 +22,9 @@ const ActasScreen = () => {
       if (response.ok) {
         setData(await response.json());
       } else {
-        // AQUÍ ESTÁ LA MAGIA: Capturamos el error real del backend
         const errorData = await response.json();
         console.error("DETALLE DEL ERROR:", errorData);
         
-        // Si el backend mandó el error_real_de_sql, lo mostramos en pantalla
         if (errorData.error_real_de_sql) {
             setError(`Error SQL: ${errorData.error_real_de_sql}`);
         } else {
