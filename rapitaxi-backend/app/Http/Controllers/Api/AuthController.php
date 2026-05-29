@@ -14,8 +14,8 @@ class AuthController extends Controller
     {
         // 1. Validar que vengan los datos obligatorios
         $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
+            'email' => 'required|email|max:100',
+            'password' => 'required|string|max:100',
         ]);
 
         // 2. Buscar al usuario por correo electrónico

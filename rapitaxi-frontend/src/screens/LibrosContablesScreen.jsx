@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Upload, Trash2, Loader2, AlertCircle, FileText, X, Save, Search, Download } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
+import { limitText } from '../utils/inputFormatters';
 const LibrosContablesScreen = () => {
   const [libros, setLibros] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -32,7 +34,15 @@ const LibrosContablesScreen = () => {
 
   useEffect(() => { fetchLibros(); }, []);
 
-  const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const formatters = {
+      titulo: (input) => limitText(input, 80),
+      mes_anio: (input) => limitText(input, 30),
+      descripcion: (input) => limitText(input, 500),
+    };
+    setFormData({ ...formData, [name]: formatters[name] ? formatters[name](value) : value });
+  };
   const handleFileChange = (e) => setFile(e.target.files[0]);
 
   const handleSubmit = async (e) => {
@@ -62,6 +72,7 @@ const LibrosContablesScreen = () => {
         setIsModalOpen(false);
         setFile(null);
         setFormData({ titulo: '', mes_anio: '', descripcion: '' });
+        showSuccessToast('Libro contable subido exitosamente.');
       } else {
         const errData = await response.json();
         setFormError(errData.message || 'Error al subir el archivo.');
@@ -79,6 +90,7 @@ const LibrosContablesScreen = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setLibros(libros.filter(l => l.id !== id));
+      showSuccessToast('Libro contable eliminado exitosamente.');
     } catch (err) { alert('Error al eliminar'); }
   };
 
@@ -88,13 +100,13 @@ const LibrosContablesScreen = () => {
   );
 
   return (
-    <div className="p-8 lg:p-10 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Libros Contables</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Libros Contables</h2>
           <p className="text-slate-500 mt-1">Archivo digital de balances y reportes fiscales.</p>
         </div>
-        <div className="flex items-center gap-4 w-full md:w-auto">
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center md:w-auto">
           <div className="relative flex-grow md:flex-grow-0">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input 
@@ -102,7 +114,7 @@ const LibrosContablesScreen = () => {
               className="w-full md:w-64 pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400 outline-none"
             />
           </div>
-          <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-yellow-400 px-5 py-3 rounded-xl font-bold flex items-center hover:bg-slate-800 shadow-md">
+          <button onClick={() => setIsModalOpen(true)} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-5 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 shadow-md">
             <Upload className="w-5 h-5 mr-2" /> Subir PDF
           </button>
         </div>
@@ -111,7 +123,7 @@ const LibrosContablesScreen = () => {
       {isLoading ? (
         <div className="flex justify-center py-20"><Loader2 className="w-10 h-10 animate-spin text-yellow-500" /></div>
       ) : librosFiltrados.length === 0 ? (
-        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-20 text-center text-slate-400">
+        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-8 sm:p-20 text-center text-slate-400">
           <BookOpen className="w-16 h-16 mx-auto mb-4 opacity-20" />
           <p className="text-lg font-medium">El archivo digital está vacío.</p>
         </div>
@@ -141,18 +153,18 @@ const LibrosContablesScreen = () => {
 
       {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center bg-slate-50">
               <h3 className="text-xl font-bold">Subir Libro</h3>
               <button onClick={() => setIsModalOpen(false)}><X className="w-6 h-6" /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
               {formError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs flex items-center font-bold"><AlertCircle className="w-4 h-4 mr-2" /> {formError}</div>}
-              <input type="text" name="titulo" onChange={handleInputChange} required placeholder="Título" className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none" />
-              <input type="text" name="mes_anio" onChange={handleInputChange} required placeholder="Mes/Año" className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none" />
+              <input type="text" name="titulo" value={formData.titulo} onChange={handleInputChange} required maxLength="80" placeholder="Titulo" className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none" />
+              <input type="text" name="mes_anio" value={formData.mes_anio} onChange={handleInputChange} required maxLength="30" placeholder="Mes/Ano" className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none" />
               <input type="file" onChange={handleFileChange} accept=".pdf" required className="w-full" />
-              <textarea name="descripcion" onChange={handleInputChange} placeholder="Descripción..." className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none" />
+              <textarea name="descripcion" value={formData.descripcion} onChange={handleInputChange} maxLength="500" placeholder="Descripcion..." className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none" />
               <button type="submit" disabled={isSubmitting} className="w-full py-4 bg-slate-900 text-yellow-400 rounded-2xl font-bold hover:bg-slate-800">
                 {isSubmitting ? <Loader2 className="animate-spin mx-auto" /> : 'Guardar'}
               </button>

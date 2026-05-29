@@ -29,7 +29,7 @@ class ExpedienteController extends Controller
         // Validamos que venga un archivo real (máximo 5MB, formatos comunes)
         $request->validate([
             'socio_id'         => 'required|exists:socios,id',
-            'nombre_documento' => 'required|string|max:255',
+            'nombre_documento' => 'required|string|max:80',
             'archivo'          => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', 
         ]);
 

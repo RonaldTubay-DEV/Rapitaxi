@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notificacion;
 use App\Models\Socio;
 use Illuminate\Http\Request;
 
@@ -35,16 +36,23 @@ class SocioController extends Controller
     {
         $request->validate([
             
-            'nombre'          => 'required|string|max:255',
-            'cedula'          => 'nullable|string|unique:socios,cedula|max:20', 
-            'telefono'        => 'nullable|string|max:20',                      
-            'correo'          => 'nullable|email|max:255',
-            'direccion'       => 'nullable|string|max:255',
+            'nombre'          => 'required|string|max:80',
+            'cedula'          => 'nullable|digits:10|unique:socios,cedula', 
+            'telefono'        => 'nullable|digits:10',                      
+            'correo'          => 'nullable|email|max:100',
+            'direccion'       => 'nullable|string|max:150',
             'estado'          => 'required|in:Activo,Inactivo',
-            'observaciones' => 'nullable|string',
+            'observaciones'   => 'nullable|string|max:500',
         ]);
 
         $socio = Socio::create($request->all());
+
+        Notificacion::create([
+            'tipo' => 'info',
+            'titulo' => 'Socio registrado',
+            'mensaje' => "Se registró el socio {$socio->nombre}.",
+            'leida' => false
+        ]);
 
         return response()->json([
             'message' => 'Socio registrado con éxito.',
@@ -76,13 +84,13 @@ class SocioController extends Controller
         // Validamos la cédula asegurando que ignore el ID actual para permitir la actualización
         $request->validate([
            
-            'nombre'          => 'required|string|max:255',
-            'cedula'          => 'nullable|string|max:20|unique:socios,cedula,' . $id, 
-            'telefono'        => 'nullable|string|max:20',                             
-            'correo'          => 'nullable|email|max:255',
-            'direccion'       => 'nullable|string|max:255',
+            'nombre'          => 'required|string|max:80',
+            'cedula'          => 'nullable|digits:10|unique:socios,cedula,' . $id, 
+            'telefono'        => 'nullable|digits:10',                             
+            'correo'          => 'nullable|email|max:100',
+            'direccion'       => 'nullable|string|max:150',
             'estado'          => 'required|in:Activo,Inactivo',
-            'observaciones' => 'nullable|string',
+            'observaciones'   => 'nullable|string|max:500',
             
         ]);
 

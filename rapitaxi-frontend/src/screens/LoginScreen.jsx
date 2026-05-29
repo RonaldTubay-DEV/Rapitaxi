@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
 
 const LoginScreen = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ const LoginScreen = () => {
       if (response.ok) {
         // 1. Guardamos el token en el almacenamiento local del navegador
         localStorage.setItem('auth_token', data.token);
+        showSuccessToast('Sesion iniciada exitosamente.');
         
         // 2. Redirigimos automáticamente al panel
         navigate('/panel');
@@ -111,6 +113,7 @@ const LoginScreen = () => {
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                   placeholder="admin@rapitaxi.com"
                   required
+                  maxLength="100"
                   disabled={isLoading}
                 />
               </div>
@@ -134,6 +137,7 @@ const LoginScreen = () => {
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent transition-all"
                   placeholder="••••••••"
                   required
+                  maxLength="100"
                   disabled={isLoading}
                 />
               </div>

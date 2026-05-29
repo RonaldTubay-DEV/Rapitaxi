@@ -16,10 +16,12 @@ import ConfiguracionScreen from './screens/ConfiguracionScreen'; // <-- 1. Impor
 
 // Importación de la Plantilla Base
 import MainLayout from './components/MainLayout';
+import ToastHost from './components/ToastHost';
 
 function App() {
   return (
     <BrowserRouter>
+      <ToastHost />
       <Routes>
         {/* Ruta pública */}
         <Route path="/" element={<LoginScreen />} />

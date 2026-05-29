@@ -6,16 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Mantenimiento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Notificacion; 
 
 class MantenimientoController extends Controller
 {
     public function index()
     {
-        // Traemos los mantenimientos junto con el auto y su dueño
         $mantenimientos = Mantenimiento::with('vehiculo.socio')
-                            ->orderBy('created_at', 'desc')
-                            ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return response()->json($mantenimientos, 200);
     }
 
@@ -24,40 +23,49 @@ class MantenimientoController extends Controller
         $request->validate([
             'vehiculo_id'              => 'required|exists:vehiculos,id',
             'fecha_mantenimiento'      => 'required|date',
-            'tipo_mantenimiento'       => 'required|string|max:255',
-            'mecanico'                 => 'nullable|string|max:100',
-            'kilometraje_actual'       => 'required|integer|min:0',
-            'proximo_mantenimiento_km' => 'nullable|integer|min:0',
-            'costo'                    => 'required|numeric|min:0',
+            'tipo_mantenimiento'       => 'required|string|max:80',
+            'mecanico'                 => 'nullable|string|max:80',
+            'kilometraje_actual'       => 'nullable|integer|min:0|max:9999999',
+            'proximo_mantenimiento_km' => 'nullable|integer|min:0|max:9999999',
+            'costo'                    => 'nullable|numeric|min:0|max:999999.99',
             'estado'                   => 'required|in:Completado,En Proceso,Programado',
-            'observaciones'            => 'nullable|string',
+            'observaciones'            => 'nullable|string|max:800',
             'comprobante'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
-        $datos = $request->except('comprobante');
+        if ($request->estado === 'Completado') {
+            $request->validate([
+                'costo' => 'required|numeric|min:0.01|max:999999.99',
+                'kilometraje_actual' => 'required|integer|min:1|max:9999999',
+                'observaciones' => 'required|string|max:800',
+                'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            ]);
 
-        // Si suben una factura, la guardamos
+            if (in_array($request->tipo_mantenimiento, ['Cambio de Aceite', 'Frenos', 'Llantas'], true)) {
+                $request->validate([
+                    'proximo_mantenimiento_km' => 'required|integer|gt:kilometraje_actual|max:9999999',
+                ]);
+            }
+        }
+
+        $datos = $request->except('comprobante');
+        if ($request->estado !== 'Completado') {
+            $datos['kilometraje_actual'] = 0;
+            $datos['proximo_mantenimiento_km'] = null;
+            $datos['costo'] = 0;
+            $datos['observaciones'] = null;
+        }
+
         if ($request->hasFile('comprobante')) {
-            $archivo = $request->file('comprobante');
-            $ruta = $archivo->store('comprobantes_mantenimiento', 'public');
-            $datos['comprobante_ruta'] = $ruta;
+            $datos['comprobante_ruta'] = $request->file('comprobante')
+                ->store('comprobantes_mantenimiento', 'public');
         }
 
         $mantenimiento = Mantenimiento::create($datos);
         $mantenimiento->load('vehiculo.socio');
 
-        // ==========================================
-        // LÓGICA REACTIVA: DISPARAR NOTIFICACIÓN AUTOMÁTICA
-        // ==========================================
-        Notificacion::create([
-            'tipo' => 'info', // Esto pintará el icono azul en tu campana
-            'titulo' => 'Ingreso a Taller',
-            'mensaje' => "El vehículo unidad {$mantenimiento->vehiculo->numero_vehiculo} ha ingresado por: {$mantenimiento->tipo_mantenimiento}.",
-            'leida' => false
-        ]);
-
         return response()->json([
-            'message' => 'Mantenimiento registrado con éxito.',
+            'message' => 'Mantenimiento registrado con exito.',
             'mantenimiento' => $mantenimiento
         ], 201);
     }
@@ -65,43 +73,66 @@ class MantenimientoController extends Controller
     public function update(Request $request, $id)
     {
         $mantenimiento = Mantenimiento::find($id);
-    
+
         if (!$mantenimiento) {
             return response()->json(['message' => 'Registro no encontrado.'], 404);
         }
 
-        // Validamos el estado y permitimos la subida del comprobante
+        if ($mantenimiento->estado === 'Completado') {
+            return response()->json(['message' => 'No se puede modificar un mantenimiento completado.'], 422);
+        }
+
         $request->validate([
-            'estado'      => 'required|in:Completado,En Proceso,Programado',
-            'comprobante' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'estado'        => 'required|in:Completado,En Proceso,Programado',
+            'kilometraje_actual' => 'nullable|integer|min:0|max:9999999',
+            'proximo_mantenimiento_km' => 'nullable|integer|min:0|max:9999999',
+            'costo'         => 'nullable|numeric|min:0|max:999999.99',
+            'observaciones' => 'nullable|string|max:800',
+            'comprobante'   => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
-        // REGLA DE NEGOCIO: Si pasa a Completado, debe tener un archivo guardado o estarse subiendo uno ahora
-        if ($request->estado === 'Completado' && !$mantenimiento->comprobante_ruta && !$request->hasFile('comprobante')) {
-            return response()->json([
-                'message' => 'Error de validación: Es obligatorio adjuntar el comprobante de pago para finalizar el mantenimiento.'
-            ], 422);
+        if ($mantenimiento->estado === 'En Proceso' && $request->estado === 'Programado') {
+            return response()->json(['message' => 'El estado solo puede avanzar; no se puede regresar a Programado.'], 422);
+        }
+
+        if ($request->estado === 'Completado') {
+            $request->validate([
+                'costo' => 'required|numeric|min:0.01|max:999999.99',
+                'kilometraje_actual' => 'required|integer|min:1|max:9999999',
+                'observaciones' => 'required|string|max:800',
+                'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            ]);
+
+            if (in_array($mantenimiento->tipo_mantenimiento, ['Cambio de Aceite', 'Frenos', 'Llantas'], true)) {
+                $request->validate([
+                    'proximo_mantenimiento_km' => 'required|integer|gt:kilometraje_actual|max:9999999',
+                ]);
+            }
         }
 
         $mantenimiento->estado = $request->estado;
 
-        // Si se adjunta un archivo en este paso, lo procesamos
+        if ($request->estado === 'Completado') {
+            $mantenimiento->kilometraje_actual = $request->kilometraje_actual;
+            $mantenimiento->proximo_mantenimiento_km = $request->proximo_mantenimiento_km;
+            $mantenimiento->costo = $request->costo;
+            $mantenimiento->observaciones = $request->observaciones;
+        }
+
         if ($request->hasFile('comprobante')) {
-            // Borramos el anterior si existía para no dejar basura en el disco
-            if ($mantenimiento->comprobante_ruta && \Illuminate\Support\Facades\Storage::disk('public')->exists($mantenimiento->comprobante_ruta)) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($mantenimiento->comprobante_ruta);
+            if ($mantenimiento->comprobante_ruta && Storage::disk('public')->exists($mantenimiento->comprobante_ruta)) {
+                Storage::disk('public')->delete($mantenimiento->comprobante_ruta);
             }
-            
-            $archivo = $request->file('comprobante');
-            $ruta = $archivo->store('comprobantes_mantenimiento', 'public');
-            $mantenimiento->comprobante_ruta = $ruta;
+
+            $mantenimiento->comprobante_ruta = $request->file('comprobante')
+                ->store('comprobantes_mantenimiento', 'public');
         }
 
         $mantenimiento->save();
         $mantenimiento->load('vehiculo.socio');
-        
+
         return response()->json([
-            'message' => 'Estado de mantenimiento actualizado con éxito.',
+            'message' => 'Estado de mantenimiento actualizado con exito.',
             'mantenimiento' => $mantenimiento
         ], 200);
     }
@@ -114,7 +145,10 @@ class MantenimientoController extends Controller
             return response()->json(['message' => 'Registro no encontrado.'], 404);
         }
 
-        // Si tenía factura guardada, la borramos del disco para ahorrar espacio
+        if ($mantenimiento->estado === 'Completado') {
+            return response()->json(['message' => 'No se puede eliminar un mantenimiento completado.'], 422);
+        }
+
         if ($mantenimiento->comprobante_ruta && Storage::disk('public')->exists($mantenimiento->comprobante_ruta)) {
             Storage::disk('public')->delete($mantenimiento->comprobante_ruta);
         }

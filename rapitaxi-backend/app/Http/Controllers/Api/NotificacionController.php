@@ -11,7 +11,8 @@ class NotificacionController extends Controller
     // Obtener todas las notificaciones ordenadas por las más recientes
     public function index()
     {
-        $notificaciones = Notificacion::orderBy('created_at', 'desc')
+        $notificaciones = Notificacion::whereIn('titulo', ['Socio registrado', 'Vehiculo registrado'])
+                                      ->orderBy('created_at', 'desc')
                                       ->take(20) // Traemos solo las últimas 20 para no saturar
                                       ->get();
         return response()->json($notificaciones, 200);

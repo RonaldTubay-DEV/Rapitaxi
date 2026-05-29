@@ -17,10 +17,10 @@ class LibroContableController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'titulo' => 'required|string|max:255',
-            'mes_anio' => 'required|string|max:50',
+            'titulo' => 'required|string|max:80',
+            'mes_anio' => 'required|string|max:30',
             'documento' => 'required|file|mimes:pdf|max:10240', // Solo PDF, hasta 10MB
-            'descripcion' => 'nullable|string'
+            'descripcion' => 'nullable|string|max:500'
         ]);
 
         $ruta = $request->file('documento')->store('libros_contables', 'public');

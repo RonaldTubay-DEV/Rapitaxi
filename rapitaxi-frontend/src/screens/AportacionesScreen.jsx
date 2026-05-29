@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
+import { normalizeDecimal, onlyDigits } from '../utils/inputFormatters';
 
 const AportacionesScreen = () => {
   // ==========================================
@@ -62,7 +64,12 @@ const AportacionesScreen = () => {
   useEffect(() => { fetchData(); }, []);
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const formatters = {
+      anio_pagado: (input) => onlyDigits(input, 4),
+      monto: (input) => normalizeDecimal(input, 5),
+    };
+    setFormData({ ...formData, [name]: formatters[name] ? formatters[name](value) : value });
   };
 
   const openCreateModal = () => {
@@ -81,7 +88,7 @@ const AportacionesScreen = () => {
 
     try {
       const token = localStorage.getItem('auth_token');
-      const response = await fetch('${API_URL}/aportaciones', {
+      const response = await fetch(`${API_URL}/aportaciones`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -95,6 +102,7 @@ const AportacionesScreen = () => {
       if (response.ok) {
         setAportaciones([data.aportacion, ...aportaciones]);
         setIsModalOpen(false);
+        showSuccessToast('Aportacion registrada exitosamente.');
       } else {
         setFormError(data.message || 'Error al guardar la aportación.');
       }
@@ -114,6 +122,7 @@ const AportacionesScreen = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       setAportaciones(aportaciones.filter(a => a.id !== id));
+      showSuccessToast('Aportacion anulada exitosamente.');
     } catch (err) { alert('Error al eliminar.'); }
   };
 
@@ -126,22 +135,22 @@ const AportacionesScreen = () => {
   });
 
   return (
-    <div className="p-8 lg:p-10 relative">
+    <div className="p-4 sm:p-6 lg:p-10 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Control de Aportaciones</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Control de Aportaciones</h2>
           <p className="text-slate-500 mt-1">Registro de pagos mensuales y cuotas de la flota.</p>
         </div>
-        <div className="mt-4 md:mt-0 flex items-center space-x-4">
-          <div className="relative">
+        <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input 
               type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar socio..." 
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 w-72 bg-white"
+              className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
           </div>
-          <button onClick={openCreateModal} className="bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-colors shadow-md">
+          <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
             <DollarSign className="w-5 h-5 mr-2" /> Registrar Aportación
           </button>
         </div>
@@ -156,7 +165,7 @@ const AportacionesScreen = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider font-semibold">
               <tr className="border-b border-slate-100">
                 <th className="p-4">Recibo</th>
@@ -190,18 +199,18 @@ const AportacionesScreen = () => {
 
       {/* MODAL PARA REGISTRAR APORTACIÓN (Que faltaba en tu código) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[calc(100vh-2rem)] overflow-hidden animate-in fade-in zoom-in duration-200">
             
-            <div className="flex justify-between items-start p-6 pb-2">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">Registrar Aportación</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">Registrar Aportación</h3>
                 <p className="text-slate-500 mt-1">Ingrese el pago de la cuota mensual del socio</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><X className="w-6 h-6" /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 pt-4">
+            <form onSubmit={handleSubmit} className="p-4 pt-4 sm:p-6 sm:pt-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
               {formError && (
                 <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2" />{formError}</div>
               )}
@@ -220,7 +229,7 @@ const AportacionesScreen = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Mes que paga</label>
                     <select name="mes_pagado" value={formData.mes_pagado} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700">
@@ -231,14 +240,14 @@ const AportacionesScreen = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Año</label>
-                    <input type="number" name="anio_pagado" value={formData.anio_pagado} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" />
+                    <input type="text" name="anio_pagado" value={formData.anio_pagado} onChange={handleInputChange} required inputMode="numeric" pattern="[0-9]{4}" maxLength="4" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Monto ($)</label>
-                    <input type="number" step="0.01" name="monto" value={formData.monto} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 font-bold text-green-700" />
+                    <input type="text" inputMode="decimal" name="monto" value={formData.monto} onChange={handleInputChange} required maxLength="8" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 font-bold text-green-700" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Fecha del Recibo</label>

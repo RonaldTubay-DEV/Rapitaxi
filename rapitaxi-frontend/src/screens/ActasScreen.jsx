@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Printer, Loader2, AlertCircle } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
 
 const ActasScreen = () => {
   const [data, setData] = useState([]);
@@ -21,15 +22,12 @@ const ActasScreen = () => {
       
       if (response.ok) {
         setData(await response.json());
+        showSuccessToast('Cuadro maestro cargado exitosamente.');
       } else {
         const errorData = await response.json();
         console.error("DETALLE DEL ERROR:", errorData);
         
-        if (errorData.error_real_de_sql) {
-            setError(`Error SQL: ${errorData.error_real_de_sql}`);
-        } else {
-            setError(errorData.message || 'Error al generar los datos del reporte.');
-        }
+        setError(errorData.message || 'No se pudo generar el cuadro maestro. Intenta nuevamente o revisa las aportaciones registradas.');
       }
     } catch (err) { 
       setError('Error de conexión con el servidor.'); 
@@ -42,7 +40,7 @@ const ActasScreen = () => {
   };
 
   return (
-    <div className="p-8 lg:p-10 bg-slate-50 min-h-screen relative">
+    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-screen relative">
       
       {/* =========================================
           SECCIÓN NO IMPRIMIBLE: Controles (Dashboard)
@@ -50,13 +48,13 @@ const ActasScreen = () => {
       <div className="print:hidden">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h2 className="text-3xl font-bold text-slate-800">Generador de Reportes</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Generador de Reportes</h2>
             <p className="text-slate-500 mt-1">Generación de documentos oficiales y matriz de flota.</p>
           </div>
-          <div className="flex gap-4">
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
             <button 
               onClick={generarPrevisualizacion} disabled={loading}
-              className="bg-slate-900 text-yellow-400 px-6 py-3 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-all shadow-md"
+              className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-6 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-all shadow-md"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <FileText className="w-5 h-5 mr-2" />} 
               Cargar Cuadro Maestro
@@ -64,7 +62,7 @@ const ActasScreen = () => {
             {data.length > 0 && (
               <button 
                 onClick={handlePrint}
-                className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center hover:bg-green-700 transition-all shadow-md"
+                className="w-full sm:w-auto bg-green-600 text-white px-6 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-green-700 transition-all shadow-md"
               >
                 <Printer className="w-5 h-5 mr-2" /> Imprimir / PDF
               </button>
@@ -80,7 +78,7 @@ const ActasScreen = () => {
         )}
 
         {data.length === 0 && !loading && (
-          <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-20 text-center text-slate-400">
+          <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-8 sm:p-20 text-center text-slate-400">
              <FileText className="w-16 h-16 mx-auto mb-4 opacity-20" />
              <p className="text-lg font-medium">No hay una previsualización activa.</p>
              <p className="text-sm">Haz clic en el botón oscuro para cargar la matriz de flota actual.</p>
@@ -92,16 +90,16 @@ const ActasScreen = () => {
           SECCIÓN IMPRIMIBLE: El Documento Oficial
           ========================================= */}
       {data.length > 0 && (
-        <div className="bg-white shadow-xl p-8 md:p-12 rounded-3xl mx-auto max-w-6xl print:shadow-none print:p-0 print:w-full print:m-0">
+        <div className="bg-white shadow-xl p-4 sm:p-8 md:p-12 rounded-3xl mx-auto max-w-6xl overflow-x-auto print:shadow-none print:p-0 print:w-full print:m-0 print:overflow-visible">
           
           {/* Encabezado oficial */}
           <div className="text-center mb-8 border-b-2 border-slate-900 pb-4">
-            <h1 className="text-2xl font-black uppercase tracking-widest text-slate-900">Compañía RapitaxisMontecristi S.A.</h1>
+            <h1 className="text-lg sm:text-2xl font-black uppercase tracking-widest text-slate-900">Compañía RapitaxisMontecristi S.A.</h1>
             <p className="text-sm font-bold text-slate-600 mt-1">CUADRO MAESTRO DE FLOTA VEHICULAR</p>
             <p className="text-[10px] text-slate-400 mt-1 italic print:hidden">Generado el: {new Date().toLocaleString()}</p>
           </div>
 
-          <table className="w-full border-collapse border border-slate-900 text-xs">
+          <table className="w-full min-w-[900px] border-collapse border border-slate-900 text-xs print:min-w-0">
             <thead>
               <tr className="bg-slate-100 print:bg-gray-200">
                 <th className="border border-slate-900 p-2 text-center uppercase">N° Vehi</th>

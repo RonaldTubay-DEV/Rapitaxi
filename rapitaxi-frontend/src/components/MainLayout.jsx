@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   CarFront, LayoutDashboard, Users, Wrench, FolderOpen, 
-  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings 
+  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings, X
 } from 'lucide-react';
 
 // IMPORTAMOS TU NUEVO COMPONENTE DE NOTIFICACIONES
@@ -12,12 +12,19 @@ import NotificacionesBell from './NotificacionesBell';
 const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
 
   useEffect(() => {
     const token = localStorage.getItem('auth_token');
     if (!token) navigate('/');
   }, [navigate]);
+
+  useEffect(() => {
+    const handleResize = () => setIsSidebarOpen(window.innerWidth >= 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('auth_token');
@@ -39,10 +46,16 @@ const MainLayout = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex overflow-hidden font-sans">
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-20 bg-slate-900/40 backdrop-blur-sm md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       
       {/* BARRA LATERAL */}
-      <aside className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-[#FFCC00] text-slate-900 transition-all duration-300 flex flex-col flex-shrink-0 z-20 shadow-lg`}>
-        <div className="h-24 flex items-center justify-between px-4">
+      <aside className={`${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:translate-x-0 md:w-20'} fixed inset-y-0 left-0 w-72 bg-[#FFCC00] text-slate-900 transition-all duration-300 flex flex-col flex-shrink-0 z-30 shadow-lg md:static`}>
+        <div className="h-20 md:h-24 flex items-center justify-between px-4">
           <div className={`flex items-center overflow-hidden transition-all ${isSidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
             <CarFront className="w-8 h-8 mr-3 flex-shrink-0" />
             <div>
@@ -50,7 +63,8 @@ const MainLayout = () => {
             </div>
           </div>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg hover:bg-yellow-500 transition-colors flex-shrink-0">
-            <Menu className="w-6 h-6" />
+            {isSidebarOpen ? <X className="w-6 h-6 md:hidden" /> : <Menu className="w-6 h-6 md:hidden" />}
+            <Menu className="hidden w-6 h-6 md:block" />
           </button>
         </div>
 
@@ -61,6 +75,7 @@ const MainLayout = () => {
               <Link 
                 key={index}
                 to={item.path} 
+                onClick={() => window.innerWidth < 768 && setIsSidebarOpen(false)}
                 className={`flex items-center px-3 py-3.5 rounded-xl transition-all duration-200 whitespace-nowrap
                   ${isActive ? 'bg-slate-900 text-yellow-400 shadow-md' : 'text-slate-800 hover:bg-yellow-500 font-medium'}`}
               >
@@ -82,10 +97,16 @@ const MainLayout = () => {
       </aside>
 
       {/* CONTENIDO PRINCIPAL: Ahora dividido en TopBar y el Outlet */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      <main className="min-w-0 flex-1 flex flex-col h-screen overflow-hidden relative">
         
         {/* NUEVA BARRA SUPERIOR (TOP BAR) */}
-        <header className="h-20 bg-slate-50 flex items-center justify-end px-8 flex-shrink-0 z-10">
+        <header className="h-16 md:h-20 bg-slate-50 flex items-center justify-between md:justify-end px-4 sm:px-6 lg:px-8 flex-shrink-0 z-10">
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-xl text-slate-700 hover:bg-white hover:shadow-sm md:hidden"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
           <div className="flex items-center gap-4">
             {/* AQUÍ VA TU COMPONENTE DE CAMPANITA */}
             <NotificacionesBell />

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
+import { limitText, onlyDigits } from '../utils/inputFormatters';
 const SociosScreen = () => {
   // ==========================================
   // ESTADOS
@@ -67,7 +69,16 @@ const SociosScreen = () => {
   }, [searchTerm]);
 
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const formatters = {
+      nombre: (input) => limitText(input, 80),
+      cedula: (input) => onlyDigits(input, 10),
+      telefono: (input) => onlyDigits(input, 10),
+      correo: (input) => limitText(input, 100),
+      direccion: (input) => limitText(input, 150),
+      observaciones: (input) => limitText(input, 500),
+    };
+    setFormData({ ...formData, [name]: formatters[name] ? formatters[name](value) : value });
   };
 
   const openCreateModal = () => {
@@ -130,8 +141,11 @@ const SociosScreen = () => {
       if (response.ok) {
         if (isEditing) {
           setSocios(socios.map(s => s.id === editingId ? data.socio : s));
+          showSuccessToast('Socio actualizado exitosamente.');
         } else {
           setSocios([data.socio, ...socios]);
+          showSuccessToast('Socio registrado exitosamente.');
+          window.dispatchEvent(new Event('notificacion_creada'));
         }
         setIsModalOpen(false);
       } else {
@@ -156,32 +170,35 @@ const SociosScreen = () => {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) setSocios(socios.filter(s => s.id !== id));
+      if (response.ok) {
+        setSocios(socios.filter(s => s.id !== id));
+        showSuccessToast('Socio eliminado exitosamente.');
+      }
     } catch (err) {
       alert('Error de conexión.');
     }
   };
 
   return (
-    <div className="p-8 lg:p-10 relative">
+    <div className="p-4 sm:p-6 lg:p-10 relative">
       
       {/* Cabecera */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Gestión de Socios</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Gestión de Socios</h2>
           <p className="text-slate-500 mt-1">Administra los accionistas, control de estados financieros y observaciones.</p>
         </div>
         
-        <div className="mt-4 md:mt-0 flex items-center space-x-4">
-          <div className="relative">
+        <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input 
               type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar socio, cédula..." 
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 w-72 bg-white"
+              className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
           </div>
-          <button onClick={openCreateModal} className="bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-colors shadow-md">
+          <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
             <Plus className="w-5 h-5 mr-2" /> Nuevo Socio
           </button>
         </div>
@@ -197,7 +214,7 @@ const SociosScreen = () => {
       {/* Tabla Principal */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[760px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider font-semibold">
                 <th className="p-4">Nombre Accionista</th>
@@ -256,18 +273,18 @@ const SociosScreen = () => {
 
       {/* MODAL DE REGISTRO / EDICIÓN */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-hidden animate-in fade-in zoom-in duration-200">
             
-            <div className="flex justify-between items-start p-6 pb-2">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">{editingId ? 'Editar Socio' : 'Registrar Nuevo Socio'}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">{editingId ? 'Editar Socio' : 'Registrar Nuevo Socio'}</h3>
                 <p className="text-slate-500 mt-1">Complete la información personal y de contacto del socio</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><X className="w-6 h-6" /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 pt-4">
+            <form onSubmit={handleSubmit} className="p-4 pt-4 sm:p-6 sm:pt-4">
               {formError && (
                 <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2" />{formError}</div>
               )}
@@ -277,12 +294,12 @@ const SociosScreen = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="col-span-1 md:col-span-2">
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Nombre Completo</label>
-                    <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} required className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Ej. Juan Pérez" />
+                    <input type="text" name="nombre" value={formData.nombre} onChange={handleInputChange} required maxLength="80" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Ej. Juan Pérez" />
                   </div>
                   
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Cédula (Opcional)</label>
-                    <input type="text" name="cedula" value={formData.cedula} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="000-0000000-0" />
+                    <input type="text" name="cedula" value={formData.cedula} onChange={handleInputChange} inputMode="numeric" pattern="[0-9]{10}" maxLength="10" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Cedula de 10 digitos" />
                   </div>
 
                   <div>
@@ -297,23 +314,23 @@ const SociosScreen = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Teléfono (Opcional)</label>
-                    <input type="text" name="telefono" value={formData.telefono} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="(099) 000-0000" />
+                    <input type="text" name="telefono" value={formData.telefono} onChange={handleInputChange} inputMode="numeric" pattern="[0-9]{10}" maxLength="10" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Telefono de 10 digitos" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Correo (Opcional)</label>
-                    <input type="email" name="correo" value={formData.correo} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="correo@ejemplo.com" />
+                    <input type="email" name="correo" value={formData.correo} onChange={handleInputChange} maxLength="100" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="correo@ejemplo.com" />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-800 mb-1">Dirección (Opcional)</label>
-                  <input type="text" name="direccion" value={formData.direccion} onChange={handleInputChange} className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Dirección completa" />
+                  <input type="text" name="direccion" value={formData.direccion} onChange={handleInputChange} maxLength="150" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Dirección completa" />
                 </div>
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-800 mb-1">Observaciones del Expediente (Opcional)</label>
                   <textarea 
-                    name="observaciones" value={formData.observaciones} onChange={handleInputChange} rows="2"
+                    name="observaciones" value={formData.observaciones} onChange={handleInputChange} rows="2" maxLength="500"
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 resize-none"
                     placeholder="Ej. Vendió el puesto a X persona / Cupo retirado provisionalmente..."
                   />

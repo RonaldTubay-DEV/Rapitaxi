@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Http\Request;
+use App\Models\Aportacion; // <--- 1. Importamos el modelo oficial de aportaciones
 use Carbon\Carbon;
 
 class ReporteController extends Controller
@@ -14,13 +14,14 @@ class ReporteController extends Controller
         try {
             $mesActual = Carbon::now()->month;
             $anioActual = Carbon::now()->year;
+            
+            // 2. En lugar de adivinar con Schema, obtenemos el nombre real que el Modelo espera
+            $tablaAportaciones = (new Aportacion)->getTable();
 
-            // 1. Usamos la tabla 'pagos' que es la que realmente existe en PostgreSQL
-            // 2. Usamos COALESCE en lugar de IFNULL
             $reporte = DB::table('socios as s')
                 ->leftJoin('vehiculos as v', 's.id', '=', 'v.socio_id')
                 ->leftJoin(DB::raw("(SELECT vehiculo_id, MAX(fecha_revision) as ultima_fecha FROM revisiones WHERE estado = 'Aprobada' GROUP BY vehiculo_id) as r"), 'v.id', '=', 'r.vehiculo_id')
-                ->leftJoin(DB::raw("(SELECT socio_id, COUNT(*) as pagos_mes FROM pagos WHERE mes_pagado = {$mesActual} AND anio_pagado = {$anioActual} GROUP BY socio_id) as a"), 's.id', '=', 'a.socio_id')
+                ->leftJoin(DB::raw("(SELECT socio_id, COUNT(*) as pagos_mes FROM {$tablaAportaciones} WHERE mes_pagado = {$mesActual} AND anio_pagado = {$anioActual} GROUP BY socio_id) as a"), 's.id', '=', 'a.socio_id')
                 ->select(
                     'v.numero_vehiculo',
                     'v.placa',
@@ -38,7 +39,7 @@ class ReporteController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'El servidor se detuvo. Mira el error exacto:',
+                'message' => 'No se pudo generar el cuadro maestro. Revisa que las tablas y migraciones esten actualizadas.',
                 'error_real_de_sql' => $e->getMessage()
             ], 500);
         }

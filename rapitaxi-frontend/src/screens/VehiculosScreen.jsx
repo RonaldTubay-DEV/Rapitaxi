@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, Plus } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
+import { formatPlate, formatUnitNumber, limitText, onlyDigits } from '../utils/inputFormatters';
 const VehiculosScreen = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [socios, setSocios] = useState([]); // Para el selector
@@ -19,8 +21,7 @@ const VehiculosScreen = () => {
     placa: '',
     marca: '',
     modelo: '',
-    anio_fabricacion: '',
-    color: ''
+    anio_fabricacion: ''
   });
 
   const fetchData = async () => {
@@ -48,12 +49,18 @@ const VehiculosScreen = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    // Si es la placa, la forzamos a mayúsculas
-    setFormData({ ...formData, [name]: name === 'placa' ? value.toUpperCase() : value });
+    const formatters = {
+      numero_vehiculo: formatUnitNumber,
+      placa: formatPlate,
+      marca: (input) => limitText(input, 50),
+      modelo: (input) => limitText(input, 50),
+      anio_fabricacion: (input) => onlyDigits(input, 4),
+    };
+    setFormData({ ...formData, [name]: formatters[name] ? formatters[name](value) : value });
   };
 
   const openCreateModal = () => {
-    setFormData({ socio_id: '', numero_vehiculo: '', placa: '', marca: '', modelo: '', anio_fabricacion: '', color: '' });
+    setFormData({ socio_id: '', numero_vehiculo: '', placa: '', marca: '', modelo: '', anio_fabricacion: '' });
     setEditingId(null);
     setFormError('');
     setIsModalOpen(true);
@@ -66,8 +73,7 @@ const VehiculosScreen = () => {
       placa: v.placa,
       marca: v.marca,
       modelo: v.modelo,
-      anio_fabricacion: v.anio_fabricacion,
-      color: v.color || ''
+      anio_fabricacion: v.anio_fabricacion
     });
     setEditingId(v.id);
     setFormError('');
@@ -96,8 +102,11 @@ const VehiculosScreen = () => {
       if (response.ok) {
         if (isEditing) {
           setVehiculos(vehiculos.map(v => v.id === editingId ? data.vehiculo : v));
+          showSuccessToast('Vehiculo actualizado exitosamente.');
         } else {
           setVehiculos([data.vehiculo, ...vehiculos]);
+          showSuccessToast('Vehiculo registrado exitosamente.');
+          window.dispatchEvent(new Event('notificacion_creada'));
         }
         setIsModalOpen(false);
       } else {
@@ -115,7 +124,10 @@ const VehiculosScreen = () => {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) setVehiculos(vehiculos.filter(v => v.id !== id));
+      if (response.ok) {
+        setVehiculos(vehiculos.filter(v => v.id !== id));
+        showSuccessToast('Vehiculo eliminado exitosamente.');
+      }
     } catch (err) { alert('Error al eliminar.'); }
   };
 
@@ -127,22 +139,22 @@ const VehiculosScreen = () => {
   });
 
   return (
-    <div className="p-8 lg:p-10 relative">
+    <div className="p-4 sm:p-6 lg:p-10 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Parque Automotor</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Parque Automotor</h2>
           <p className="text-slate-500 mt-1">Gestión de unidades, placas y especificaciones técnicas de la flota.</p>
         </div>
-        <div className="mt-4 md:mt-0 flex items-center space-x-4">
-          <div className="relative">
+        <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input 
               type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar unidad, placa o socio..." 
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 w-72 bg-white"
+              className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
           </div>
-          <button onClick={openCreateModal} className="bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-colors shadow-md">
+          <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
             <Plus className="w-5 h-5 mr-2" /> Agregar Vehículo
           </button>
         </div>
@@ -156,7 +168,7 @@ const VehiculosScreen = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[700px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase font-semibold">
                 <th className="p-4">N° Unidad</th>
@@ -181,7 +193,7 @@ const VehiculosScreen = () => {
                     </td>
                     <td className="p-4">
                       <div className="font-medium text-slate-700">{v.marca} {v.modelo}</div>
-                      <div className="text-xs text-slate-500">Año: {v.anio_fabricacion} | {v.color || 'Sin color'}</div>
+                      <div className="text-xs text-slate-500">Año: {v.anio_fabricacion} | Color: Amarillo</div>
                     </td>
                     <td className="p-4 flex justify-center space-x-2">
                       <button onClick={() => openEditModal(v)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button>
@@ -197,17 +209,17 @@ const VehiculosScreen = () => {
 
       {/* MODAL DE VEHÍCULOS */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-start p-6 pb-2">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[calc(100vh-2rem)] overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">{editingId ? 'Editar Vehículo' : 'Registrar Vehículo'}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">{editingId ? 'Editar Vehículo' : 'Registrar Vehículo'}</h3>
                 <p className="text-slate-500 mt-1">Asigne los datos del activo al socio correspondiente.</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-6 h-6" /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 pt-4">
+            <form onSubmit={handleSubmit} className="p-4 pt-4 sm:p-6 sm:pt-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
               {formError && <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2" />{formError}</div>}
 
               <div className="space-y-4">
@@ -221,36 +233,32 @@ const VehiculosScreen = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">N° de Unidad</label>
-                    <input type="text" name="numero_vehiculo" value={formData.numero_vehiculo} onChange={handleInputChange} required placeholder="Ej. 012-01" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400 font-bold text-slate-800" />
+                    <input type="text" name="numero_vehiculo" value={formData.numero_vehiculo} onChange={handleInputChange} required maxLength="6" pattern="[0-9]{3}-[0-9]{2}" placeholder="Ej. 012-01" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400 font-bold text-slate-800" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Placa (Única)</label>
-                    <input type="text" name="placa" value={formData.placa} onChange={handleInputChange} required placeholder="Ej. MBC-4650" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400 font-mono uppercase text-slate-800" />
+                    <input type="text" name="placa" value={formData.placa} onChange={handleInputChange} required maxLength="8" pattern="[A-Z]{3}-[0-9]{4}" placeholder="Ej. MBC-4650" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400 font-mono uppercase text-slate-800" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Marca</label>
-                    <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} required placeholder="Ej. Chevrolet" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
+                    <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} required maxLength="50" placeholder="Ej. Chevrolet" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Modelo</label>
-                    <input type="text" name="modelo" value={formData.modelo} onChange={handleInputChange} required placeholder="Ej. Aveo Family" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
+                    <input type="text" name="modelo" value={formData.modelo} onChange={handleInputChange} required maxLength="50" placeholder="Ej. Aveo Family" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Año de Fabricación</label>
-                    <input type="number" name="anio_fabricacion" value={formData.anio_fabricacion} onChange={handleInputChange} required min="1980" max={new Date().getFullYear() + 1} placeholder="Ej. 2018" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Color (Opcional)</label>
-                    <input type="text" name="color" value={formData.color} onChange={handleInputChange} placeholder="Ej. Amarillo" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
+                    <input type="text" name="anio_fabricacion" value={formData.anio_fabricacion} onChange={handleInputChange} required inputMode="numeric" pattern="[0-9]{4}" maxLength="4" placeholder="Ej. 2018" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
                   </div>
                 </div>
               </div>

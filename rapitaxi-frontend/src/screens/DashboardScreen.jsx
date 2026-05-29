@@ -43,10 +43,10 @@ const DashboardScreen = () => {
   const porcentajeLegal = kpis.flota_total > 0 ? Math.round((kpis.vehiculos_al_dia / kpis.flota_total) * 100) : 0;
 
   return (
-    <div className="p-8 lg:p-10 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-screen">
       
       <div className="mb-8">
-        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Resumen Operativo</h2>
+        <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Resumen Operativo</h2>
         <p className="text-slate-500 mt-1 font-medium">Monitoreo en tiempo real de RapitaxisMontecristi S.A.</p>
       </div>
 
@@ -99,8 +99,8 @@ const DashboardScreen = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* COLUMNA IZQUIERDA: Estado de la Flota (1/3) */}
-        <div className="lg:col-span-1 bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-          <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
+        <div className="lg:col-span-1 bg-white rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-6 flex items-center">
             <ShieldCheck className="w-6 h-6 mr-2 text-green-500" /> Estatus Legal (RTV)
           </h3>
           
@@ -129,8 +129,8 @@ const DashboardScreen = () => {
         </div>
 
         {/* COLUMNA DERECHA: Actividad Reciente del Taller (2/3) */}
-        <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-          <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
+        <div className="lg:col-span-2 bg-white rounded-3xl shadow-sm border border-slate-100 p-5 sm:p-8">
+          <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-6 flex items-center">
             <Clock className="w-6 h-6 mr-2 text-orange-500" /> Últimos Movimientos en Taller
           </h3>
 
@@ -142,7 +142,7 @@ const DashboardScreen = () => {
           ) : (
             <div className="space-y-4">
               {recientes.map((mant) => (
-                <div key={mant.id} className="flex items-center p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
+                <div key={mant.id} className="flex flex-col gap-3 p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors sm:flex-row sm:items-center">
                   
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 mr-4 ${
                     mant.estado === 'Completado' ? 'bg-green-100 text-green-600' :
@@ -151,7 +151,7 @@ const DashboardScreen = () => {
                     <Wrench className="w-5 h-5" />
                   </div>
                   
-                  <div className="flex-grow">
+                  <div className="min-w-0 flex-grow">
                     <h4 className="font-bold text-slate-900">
                       Unidad {mant.vehiculo?.numero_vehiculo} - {mant.tipo_mantenimiento}
                     </h4>
@@ -160,7 +160,7 @@ const DashboardScreen = () => {
                     </p>
                   </div>
                   
-                  <div className="text-right">
+                  <div className="w-full text-left sm:w-auto sm:text-right">
                     <p className="font-black text-slate-800">${parseFloat(mant.costo).toFixed(2)}</p>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{mant.estado}</span>
                   </div>

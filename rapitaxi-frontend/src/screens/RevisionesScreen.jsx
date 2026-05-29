@@ -4,6 +4,8 @@ import {
   X, Save, Plus, Calendar, CheckCircle, XCircle, Clock 
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
+import { limitText } from '../utils/inputFormatters';
 const RevisionesScreen = () => {
   // ==========================================
   // ESTADOS
@@ -78,7 +80,12 @@ const RevisionesScreen = () => {
   // MANEJADORES DE EVENTOS
   // ==========================================
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    const formatters = {
+      tipo_personalizado: (input) => limitText(input, 80),
+      observaciones: (input) => limitText(input, 500),
+    };
+    setFormData({ ...formData, [name]: formatters[name] ? formatters[name](value) : value });
   };
 
   const openCreateModal = () => {
@@ -147,8 +154,10 @@ const RevisionesScreen = () => {
       if (response.ok) {
         if (isEditing) {
           setRevisiones(revisiones.map(r => r.id === editingId ? data.revision : r));
+          showSuccessToast('Tramite legal actualizado exitosamente.');
         } else {
           setRevisiones([data.revision, ...revisiones]);
+          showSuccessToast('Tramite legal registrado exitosamente.');
         }
         setIsModalOpen(false);
       } else {
@@ -169,7 +178,10 @@ const RevisionesScreen = () => {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) setRevisiones(revisiones.filter(r => r.id !== id));
+      if (response.ok) {
+        setRevisiones(revisiones.filter(r => r.id !== id));
+        showSuccessToast('Tramite legal eliminado exitosamente.');
+      }
     } catch (err) { alert('Error de conexión.'); }
   };
 
@@ -191,23 +203,23 @@ const RevisionesScreen = () => {
   };
 
   return (
-    <div className="p-8 lg:p-10 relative">
+    <div className="p-4 sm:p-6 lg:p-10 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold text-slate-800">Control de RTV y Legal</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Control de RTV y Legal</h2>
           <p className="text-slate-500 mt-1">Bitácora de revisiones vehiculares, permisos y trámites con la ANT/GAD.</p>
         </div>
         
-        <div className="mt-4 md:mt-0 flex items-center space-x-4">
-          <div className="relative">
+        <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input 
               type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Buscar unidad, placa o trámite..." 
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 w-72 bg-white"
+              className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
           </div>
-          <button onClick={openCreateModal} className="bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-colors shadow-md">
+          <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
             <Plus className="w-5 h-5 mr-2" /> Registrar Trámite
           </button>
         </div>
@@ -222,7 +234,7 @@ const RevisionesScreen = () => {
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full min-w-[820px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wider font-semibold">
                 <th className="p-4">Fecha</th>
@@ -270,17 +282,17 @@ const RevisionesScreen = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex justify-between items-start p-6 pb-2">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
               <div>
-                <h3 className="text-2xl font-bold text-slate-900">{editingId ? 'Editar Trámite' : 'Registrar Trámite Legal'}</h3>
+                <h3 className="text-xl sm:text-2xl font-bold text-slate-900">{editingId ? 'Editar Trámite' : 'Registrar Trámite Legal'}</h3>
                 <p className="text-slate-500 mt-1">Bitácora de revisiones y documentos habilitantes</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><X className="w-6 h-6" /></button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 pt-4">
+            <form onSubmit={handleSubmit} className="p-4 pt-4 sm:p-6 sm:pt-4 overflow-y-auto max-h-[calc(100vh-8rem)]">
               {formError && <div className="mb-4 bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2" />{formError}</div>}
 
               <div className="space-y-4">
@@ -294,7 +306,7 @@ const RevisionesScreen = () => {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 items-start">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Fecha del Trámite</label>
                     <input type="date" name="fecha_revision" value={formData.fecha_revision} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400" />
@@ -315,7 +327,7 @@ const RevisionesScreen = () => {
                       <div className="animate-in fade-in slide-in-from-top-2">
                         <input 
                           type="text" name="tipo_personalizado" value={formData.tipo_personalizado} onChange={handleInputChange}
-                          required placeholder="Especifique..." className="w-full px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" 
+                          required maxLength="80" placeholder="Especifique..." className="w-full px-4 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400" 
                         />
                       </div>
                     )}
@@ -333,7 +345,7 @@ const RevisionesScreen = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-800 mb-1">Observaciones / Detalles</label>
-                  <textarea name="observaciones" value={formData.observaciones} onChange={handleInputChange} rows="2" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none" placeholder="Ej. Trámite ingresado el día de hoy / Especie pendiente de entrega..." />
+                  <textarea name="observaciones" value={formData.observaciones} onChange={handleInputChange} rows="2" maxLength="500" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 resize-none" placeholder="Ej. Trámite ingresado el día de hoy / Especie pendiente de entrega..." />
                 </div>
               </div>
 

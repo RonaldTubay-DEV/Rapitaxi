@@ -23,9 +23,9 @@ class AportacionController extends Controller
             'socio_id' => 'required|exists:socios,id',
             'mes_pagado' => 'required|integer|min:1|max:12',
             'anio_pagado' => 'required|integer|min:2000|max:2100',
-            'monto' => 'required|numeric|min:0',
+            'monto' => 'required|numeric|min:0|max:99999.99',
             'fecha_pago' => 'required|date',
-            'metodo_pago' => 'nullable|string|max:50',
+            'metodo_pago' => 'nullable|string|max:30',
         ]);
 
         // Verificamos si ya existe un Aportacion de este socio para ese mes y año (para no cobrar doble)

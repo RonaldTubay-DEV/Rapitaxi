@@ -113,7 +113,7 @@ const NotificacionesBell = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200">
+        <div className="fixed left-4 right-4 top-16 mt-0 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-200 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-80 md:w-96">
           <div className="bg-slate-50 px-4 py-3 border-b flex justify-between items-center">
             <h3 className="font-bold text-slate-800 flex items-center">
               Notificaciones {noLeidas > 0 && <span className="ml-2 bg-yellow-400 text-slate-900 text-xs px-2 py-0.5 rounded-full">{noLeidas} nuevas</span>}

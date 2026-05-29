@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notificacion;
 use App\Models\Vehiculo;
 use Illuminate\Http\Request;
 
@@ -18,19 +19,32 @@ class VehiculoController extends Controller
     // 2. Registrar las especificaciones de un vehículo
     public function store(Request $request)
     {
+        $request->merge([
+            'placa' => strtoupper($request->placa ?? ''),
+        ]);
         // Dentro de tus métodos store y update:
         $request->validate([
             'socio_id'         => 'required|exists:socios,id',
-            'numero_vehiculo'  => 'required|string|max:50',
-            'placa'            => 'required|string|max:20',
-            'marca'            => 'required|string|max:100',
-            'modelo'           => 'required|string|max:100',
+            'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/'],
+            'placa'            => ['required', 'regex:/^[A-Z]{3}-[0-9]{4}$/', 'unique:vehiculos,placa'],
+            'marca'            => 'required|string|max:50',
+            'modelo'           => 'required|string|max:50',
             'anio_fabricacion' => 'required|integer|min:1980|max:' . (date('Y') + 1),
-            'color'            => 'nullable|string|max:50',
         ]);
 
-        $vehiculo = Vehiculo::create($request->all());
+        $datos = $request->all();
+        $datos['placa'] = strtoupper($datos['placa']);
+        $datos['color'] = 'Amarillo';
+
+        $vehiculo = Vehiculo::create($datos);
         $vehiculo->load('socio');
+
+        Notificacion::create([
+            'tipo' => 'info',
+            'titulo' => 'Vehiculo registrado',
+            'mensaje' => "Se registró el vehículo unidad {$vehiculo->numero_vehiculo} con placa {$vehiculo->placa}.",
+            'leida' => false
+        ]);
 
         return response()->json([
             'message' => 'Vehículo registrado con éxito.',
@@ -53,6 +67,9 @@ class VehiculoController extends Controller
     // 4. Actualizar datos técnicos del auto
     public function update(Request $request, $id)
     {
+        $request->merge([
+            'placa' => strtoupper($request->placa ?? ''),
+        ]);
         $vehiculo = Vehiculo::find($id);
 
         if (!$vehiculo) {
@@ -62,15 +79,18 @@ class VehiculoController extends Controller
         // Dentro de tus métodos store y update:
         $request->validate([
             'socio_id'         => 'required|exists:socios,id',
-            'numero_vehiculo'  => 'required|string|max:50',
-            'placa'            => 'required|string|max:20',
-            'marca'            => 'required|string|max:100',
-            'modelo'           => 'required|string|max:100',
+            'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/'],
+            'placa'            => ['required', 'regex:/^[A-Z]{3}-[0-9]{4}$/', 'unique:vehiculos,placa,' . $id],
+            'marca'            => 'required|string|max:50',
+            'modelo'           => 'required|string|max:50',
             'anio_fabricacion' => 'required|integer|min:1980|max:' . (date('Y') + 1),
-            'color'            => 'nullable|string|max:50',
         ]);
 
-        $vehiculo->update($request->all());
+        $datos = $request->all();
+        $datos['placa'] = strtoupper($datos['placa']);
+        $datos['color'] = 'Amarillo';
+
+        $vehiculo->update($datos);
         $vehiculo->load('socio');
 
         return response()->json([

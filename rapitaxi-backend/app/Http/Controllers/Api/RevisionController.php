@@ -20,9 +20,9 @@ class RevisionController extends Controller
         $request->validate([
             'vehiculo_id'    => 'required|exists:vehiculos,id',
             'fecha_revision' => 'required|date',
-            'tipo'           => 'required|string|max:100',
+            'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
-            'observaciones'  => 'nullable|string',
+            'observaciones'  => 'nullable|string|max:500',
         ]);
 
         $revision = Revision::create($request->all());
@@ -53,9 +53,9 @@ class RevisionController extends Controller
         $request->validate([
             'vehiculo_id'    => 'required|exists:vehiculos,id',
             'fecha_revision' => 'required|date',
-            'tipo'           => 'required|string|max:100',
+            'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
-            'observaciones'  => 'nullable|string',
+            'observaciones'  => 'nullable|string|max:500',
         ]);
 
         $revision->update($request->all());

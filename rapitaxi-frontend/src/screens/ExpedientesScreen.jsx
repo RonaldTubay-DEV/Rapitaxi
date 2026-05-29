@@ -4,6 +4,8 @@ import {
   Upload, Trash2, Loader2, AlertCircle, X, ExternalLink, File
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { showSuccessToast } from '../utils/feedback';
+import { limitText } from '../utils/inputFormatters';
 
 const ExpedientesScreen = () => {
   // Estados para Socios (Izquierda)
@@ -92,6 +94,7 @@ const ExpedientesScreen = () => {
         setExpedientes([data.expediente, ...expedientes]);
         setIsModalOpen(false);
         setFileData({ nombre: '', archivo: null });
+        showSuccessToast('Documento subido exitosamente.');
       } else {
         setUploadError('Error al subir el archivo. Intente con un formato válido.');
       }
@@ -108,7 +111,10 @@ const ExpedientesScreen = () => {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (response.ok) setExpedientes(expedientes.filter(e => e.id !== id));
+      if (response.ok) {
+        setExpedientes(expedientes.filter(e => e.id !== id));
+        showSuccessToast('Documento eliminado exitosamente.');
+      }
     } catch (err) { alert('Error al eliminar.'); }
   };
 
@@ -119,11 +125,11 @@ const ExpedientesScreen = () => {
   );
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="flex h-full min-h-[calc(100vh-4rem)] flex-col bg-slate-50 overflow-hidden md:h-screen md:flex-row">
       
       {/* PANEL IZQUIERDO: LISTA DE SOCIOS */}
-      <aside className="w-80 bg-white border-r border-slate-200 flex flex-col">
-        <div className="p-6 border-b border-slate-100">
+      <aside className="h-80 w-full bg-white border-b border-slate-200 flex flex-col md:h-auto md:w-80 md:border-b-0 md:border-r">
+        <div className="p-4 sm:p-6 border-b border-slate-100">
           <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
             <Users className="w-5 h-5 mr-2 text-yellow-500" /> Socios
           </h3>
@@ -157,12 +163,12 @@ const ExpedientesScreen = () => {
       </aside>
 
       {/* PANEL DERECHO: CARPETA VIRTUAL */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="min-h-0 flex-1 flex flex-col overflow-hidden">
         {selectedSocio ? (
           <>
-            <header className="p-6 bg-white border-b border-slate-200 flex justify-between items-center shadow-sm">
+            <header className="p-4 sm:p-6 bg-white border-b border-slate-200 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center shadow-sm">
               <div>
-                <h2 className="text-2xl font-bold text-slate-800 flex items-center">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 flex items-center">
                   <FolderOpen className="w-6 h-6 mr-3 text-yellow-500" />
                   Expediente de {selectedSocio.nombre}
                 </h2>
@@ -170,13 +176,13 @@ const ExpedientesScreen = () => {
               </div>
               <button 
                 onClick={() => setIsModalOpen(true)}
-                className="bg-slate-900 text-yellow-400 px-5 py-2.5 rounded-xl font-bold flex items-center hover:bg-slate-800 transition-all shadow-md"
+                className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-5 py-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-all shadow-md"
               >
                 <Upload className="w-5 h-5 mr-2" /> Subir Documento
               </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-8">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400">
                   <Loader2 className="w-10 h-10 animate-spin mb-4 text-yellow-500" />
@@ -189,7 +195,7 @@ const ExpedientesScreen = () => {
                   <p className="text-sm">Empieza subiendo la matrícula o cédula del socio.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
                   {expedientes.map(doc => (
                     <div key={doc.id} className="group bg-white p-4 rounded-2xl border border-slate-200 hover:shadow-xl transition-all relative">
                       <div className="aspect-square bg-slate-50 rounded-xl mb-4 flex items-center justify-center overflow-hidden">
@@ -230,19 +236,19 @@ const ExpedientesScreen = () => {
 
       {/* MODAL DE SUBIDA */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200">
-            <div className="p-6 border-b flex justify-between items-center">
+            <div className="p-4 sm:p-6 border-b flex justify-between items-center">
               <h3 className="text-xl font-bold">Subir Documento</h3>
               <button onClick={() => setIsModalOpen(false)}><X className="w-6 h-6 text-slate-400" /></button>
             </div>
-            <form onSubmit={handleUpload} className="p-6 space-y-4">
+            <form onSubmit={handleUpload} className="p-4 sm:p-6 space-y-4">
               {uploadError && <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs flex items-center"><AlertCircle className="w-4 h-4 mr-2" /> {uploadError}</div>}
               
               <div>
                 <label className="block text-sm font-bold mb-2">Nombre del Documento</label>
                 <input 
-                  type="text" required value={fileData.nombre} onChange={(e) => setFileData({...fileData, nombre: e.target.value})}
+                  type="text" required maxLength="80" value={fileData.nombre} onChange={(e) => setFileData({...fileData, nombre: limitText(e.target.value, 80)})}
                   placeholder="Ej: Matrícula 2026" className="w-full px-4 py-3 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-yellow-400"
                 />
               </div>
