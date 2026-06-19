@@ -75,6 +75,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('socios', SocioController::class);
     Route::apiResource('aportaciones', AportacionController::class)->only(['index', 'store', 'destroy']);
     Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
+    Route::get('expedientes/{id}/download', [ExpedienteController::class, 'download']);
     Route::apiResource('vehiculos', VehiculoController::class);
     Route::apiResource('revisiones', RevisionController::class);
     Route::apiResource('mantenimientos', MantenimientoController::class)->only(['index', 'store', 'update', 'destroy']);    

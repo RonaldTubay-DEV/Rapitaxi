@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, FolderOpen, Search, FileText, Image as ImageIcon, 
-  Upload, Trash2, Loader2, AlertCircle, X, ExternalLink, File
+  Users, FolderOpen, Search, FileText,
+  Upload, Trash2, Loader2, AlertCircle, X, ExternalLink
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showSuccessToast } from '../utils/feedback';
@@ -118,6 +118,37 @@ const ExpedientesScreen = () => {
     } catch (err) { alert('Error al eliminar.'); }
   };
 
+  const downloadDocument = async (doc) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/expedientes/${doc.id}/download`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        throw new Error('No se pudo descargar el documento.');
+      }
+
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+
+      const fallbackBaseName = (doc.nombre_documento || 'documento').replace(/[\\/:*?"<>|]+/g, '_').trim();
+      const fallbackExtension = (doc.tipo_documento || '').toLowerCase();
+      const fallbackFileName = fallbackExtension ? `${fallbackBaseName}.${fallbackExtension}` : fallbackBaseName;
+
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fallbackFileName || 'documento';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      alert('No se pudo descargar el documento.');
+    }
+  };
+
   // Filtrado de lista lateral
   const sociosFiltrados = socios.filter(s => 
     (s.nombre || '').toLowerCase().includes(searchSocio.toLowerCase()) || 
@@ -210,9 +241,9 @@ const ExpedientesScreen = () => {
                       
                       {/* Acciones flotantes */}
                       <div className="absolute top-2 right-2 flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <a href={doc.url_archivo} target="_blank" rel="noreferrer" className="p-1.5 bg-white shadow-md rounded-lg text-blue-600 hover:bg-blue-50">
+                        <button onClick={() => downloadDocument(doc)} className="p-1.5 bg-white shadow-md rounded-lg text-blue-600 hover:bg-blue-50" title="Descargar documento">
                           <ExternalLink className="w-4 h-4" />
-                        </a>
+                        </button>
                         <button onClick={() => deleteDocument(doc.id)} className="p-1.5 bg-white shadow-md rounded-lg text-red-600 hover:bg-red-50">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -278,6 +309,7 @@ const ExpedientesScreen = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

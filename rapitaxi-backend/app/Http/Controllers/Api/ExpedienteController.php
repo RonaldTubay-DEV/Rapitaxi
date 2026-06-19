@@ -72,4 +72,28 @@ class ExpedienteController extends Controller
 
         return response()->json(['message' => 'Documento eliminado correctamente.'], 200);
     }
+
+    // 4. Descargar documento con nombre legible para el usuario
+    public function download($id)
+    {
+        $expediente = Expediente::find($id);
+
+        if (!$expediente) {
+            return response()->json(['message' => 'Documento no encontrado.'], 404);
+        }
+
+        if (!Storage::disk('public')->exists($expediente->ruta_archivo)) {
+            return response()->json(['message' => 'Archivo no encontrado.'], 404);
+        }
+
+        $base = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim((string) $expediente->nombre_documento));
+        $base = trim((string) $base, '_');
+        $base = $base !== '' ? $base : 'documento';
+
+        $extension = strtolower((string) $expediente->tipo_documento);
+        $fileName = $extension !== '' ? $base . '.' . $extension : $base;
+
+        return Storage::disk('public')->download($expediente->ruta_archivo, $fileName);
+    }
+
 }
