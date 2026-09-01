@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
 
 html,
 body,
@@ -8,4 +9,40 @@ body,
 
 body {
   overflow-x: hidden;
+}
+
+/* Entrada de toasts: desliza desde la derecha con un pequeño rebote */
+@keyframes toast-in {
+  0% { transform: translateX(120%); opacity: 0; }
+  60% { transform: translateX(-8px); opacity: 1; }
+  80% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+/* Barra de tiempo restante del toast */
+@keyframes toast-progress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+/* Salida de dialogos: se encoge y se desvanece antes de desmontar */
+@keyframes toast-out {
+  from { transform: scale(1); opacity: 1; }
+  to { transform: scale(0.95); opacity: 0; }
+}
+
+/* Fondo oscuro del dialogo de confirmacion: entra y sale con un simple fundido */
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes overlay-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Salida de toasts: se desliza de vuelta hacia la derecha antes de desmontar */
+@keyframes toast-slide-out {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(120%); opacity: 0; }
 }

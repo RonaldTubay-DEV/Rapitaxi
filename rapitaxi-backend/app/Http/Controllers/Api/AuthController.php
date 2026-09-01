@@ -3,61 +3,60 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LoginRequest;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        // 1. Validar que vengan los datos obligatorios
-        $request->validate([
-            'email' => 'required|email|max:100',
-            'password' => 'required|string|max:100',
-        ]);
+        try {
+            $credentials = $request->validated();
 
-        // 2. Buscar al usuario por correo electrónico
-        $user = User::where('email', $request->email)->first();
+            $user = User::where('email', $credentials['email'])->first();
 
-        // 3. Validar credenciales
-        if (! $user || ! Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['Las credenciales ingresadas son incorrectas.'],
-            ]);
+            if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['Las credenciales ingresadas son incorrectas.'],
+                ]);
+            }
+
+            if (! $user->is_active) {
+                throw ValidationException::withMessages([
+                    'email' => ['Esta cuenta ha sido desactivada. Contacta al administrador.'],
+                ]);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Ingreso exitoso',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->getRoleNames()->first() ?? 'admin',
+                ],
+            ], 200);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (QueryException $e) {
+            return response()->json([
+                'message' => 'No se pudo conectar con la base de datos. Intenta nuevamente en unos minutos o contacta al administrador.',
+                'code' => 'database_connection_error',
+            ], 503);
         }
-
-        // 4. Lógica de Roles (Fase 2)
-        // Está comentado para permitir el ingreso del usuario actual. 
-        // Descoméntalo en el futuro cuando agregues la columna 'role' a tu BD.
-        /*
-        if ($user->role !== 'admin') {
-            throw ValidationException::withMessages([
-                'email' => ['Acceso denegado. Este portal es de uso exclusivo para administradores.'],
-            ]);
-        }
-        */
-
-        // 5. Emitir Token de acceso seguro (Laravel Sanctum)
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        // 6. Retorno exacto que espera React
-        return response()->json([
-            'message' => 'Ingreso exitoso',
-            'token' => $token, // <-- La palabra mágica que React necesita
-            'user' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role ?? 'admin' // Fallback seguro por ahora
-            ]
-        ], 200);
     }
 
     public function logout(Request $request)
     {
-        // Destruye el token actual para cerrar la sesión de forma segura
         $request->user()->currentAccessToken()->delete();
-        return response()->json(['message' => 'Sesión cerrada correctamente'], 200);
+
+        return response()->json(['message' => 'Sesion cerrada correctamente'], 200);
     }
 }

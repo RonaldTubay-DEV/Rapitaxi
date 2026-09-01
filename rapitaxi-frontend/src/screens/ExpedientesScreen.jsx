@@ -4,7 +4,8 @@ import {
   Upload, Trash2, Loader2, AlertCircle, X, ExternalLink
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { limitText } from '../utils/inputFormatters';
 
 const ExpedientesScreen = () => {
@@ -104,7 +105,7 @@ const ExpedientesScreen = () => {
   };
 
   const deleteDocument = async (id) => {
-    if (!window.confirm('¿Eliminar este documento permanentemente?')) return;
+    if (!(await confirmDialog('¿Eliminar este documento permanentemente?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/expedientes/${id}`, {
@@ -115,7 +116,7 @@ const ExpedientesScreen = () => {
         setExpedientes(expedientes.filter(e => e.id !== id));
         showSuccessToast('Documento eliminado exitosamente.');
       }
-    } catch (err) { alert('Error al eliminar.'); }
+    } catch (err) { showErrorToast('Error al eliminar.'); }
   };
 
   const downloadDocument = async (doc) => {
@@ -145,7 +146,7 @@ const ExpedientesScreen = () => {
 
       window.URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      alert('No se pudo descargar el documento.');
+      showErrorToast('No se pudo descargar el documento.');
     }
   };
 

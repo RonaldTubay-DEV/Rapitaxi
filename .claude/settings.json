@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/node_modules/**)",
+      "Read(**/vendor/**)",
+      "Read(**/storage/**)",
+      "Read(**/bootstrap/cache/**)",
+      "Read(**/public/build/**)",
+      "Read(**/.git/**)",
+      "Read(**/*.lock)",
+      "Edit(**/node_modules/**)",
+      "Edit(**/vendor/**)",
+      "Edit(**/storage/**)",
+      "Edit(**/bootstrap/cache/**)",
+      "Edit(**/public/build/**)",
+      "Edit(**/.git/**)",
+      "Edit(**/*.lock)",
+      "Grep(**/node_modules/**)",
+      "Grep(**/vendor/**)",
+      "Grep(**/storage/**)",
+      "Grep(**/bootstrap/cache/**)",
+      "Grep(**/public/build/**)",
+      "Grep(**/.git/**)",
+      "Glob(**/node_modules/**)",
+      "Glob(**/vendor/**)",
+      "Glob(**/storage/**)",
+      "Glob(**/bootstrap/cache/**)",
+      "Glob(**/public/build/**)",
+      "Glob(**/.git/**)"
+    ]
+  }
+}

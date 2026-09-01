@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Upload, Trash2, Loader2, AlertCircle, FileText, X, Save, Search, Download } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { limitText } from '../utils/inputFormatters';
 const LibrosContablesScreen = () => {
   const [libros, setLibros] = useState([]);
@@ -82,7 +83,7 @@ const LibrosContablesScreen = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este libro contable permanentemente?')) return;
+    if (!(await confirmDialog('¿Eliminar este libro contable permanentemente?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       await fetch(`${API_URL}/libros-contables/${id}`, {
@@ -91,7 +92,7 @@ const LibrosContablesScreen = () => {
       });
       setLibros(libros.filter(l => l.id !== id));
       showSuccessToast('Libro contable eliminado exitosamente.');
-    } catch (err) { alert('Error al eliminar'); }
+    } catch (err) { showErrorToast('Error al eliminar'); }
   };
 
   const librosFiltrados = libros.filter(l => 

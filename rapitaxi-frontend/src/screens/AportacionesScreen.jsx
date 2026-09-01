@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { normalizeDecimal, onlyDigits } from '../utils/inputFormatters';
 
 const AportacionesScreen = () => {
@@ -114,7 +115,7 @@ const AportacionesScreen = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Anular esta aportación?')) return;
+    if (!(await confirmDialog('¿Anular esta aportación?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       await fetch(`${API_URL}/aportaciones/${id}`, {
@@ -123,7 +124,7 @@ const AportacionesScreen = () => {
       });
       setAportaciones(aportaciones.filter(a => a.id !== id));
       showSuccessToast('Aportacion anulada exitosamente.');
-    } catch (err) { alert('Error al eliminar.'); }
+    } catch (err) { showErrorToast('Error al eliminar.'); }
   };
 
   const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];

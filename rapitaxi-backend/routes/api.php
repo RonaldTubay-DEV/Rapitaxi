@@ -1,94 +1,98 @@
 <?php
 
+use App\Http\Controllers\Api\AportacionController;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ConfiguracionMantenimientoController;
+use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExpedienteController;
+use App\Http\Controllers\Api\LibroContableController;
+use App\Http\Controllers\Api\MantenimientoController;
+use App\Http\Controllers\Api\NotificacionController;
+use App\Http\Controllers\Api\ReporteController;
+use App\Http\Controllers\Api\RevisionController;
+use App\Http\Controllers\Api\SocioController;
+use App\Http\Controllers\Api\SocioCuentaController;
+use App\Http\Controllers\Api\UsuarioController;
+use App\Http\Controllers\Api\VehiculoController;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-
-// Importaciones necesarias para el setup temporal
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\SocioController; 
-use App\Http\Controllers\Api\AportacionController;
-use App\Http\Controllers\Api\ExpedienteController;
-use App\Http\Controllers\Api\VehiculoController;
-use App\Http\Controllers\Api\RevisionController;
-use App\Http\Controllers\Api\MantenimientoController;
-use App\Http\Controllers\Api\ReporteController;
-use App\Http\Controllers\Api\DashboardController;
-use App\Http\Controllers\Api\LibroContableController;
-use App\Http\Controllers\Api\NotificacionController;
-use App\Http\Controllers\Api\ConfiguracionMantenimientoController;
-
-// Endpoint público para el inicio de sesión
 Route::post('/login', [AuthController::class, 'login']);
 
-// =========================================================================
-// RUTA TEMPORAL DE CONFIGURACIÓN (ELIMINAR DESPUÉS DE USAR EN PRODUCCIÓN)
-// =========================================================================
-Route::get('/setup-produccion', function () {
+Route::get('/setup-primer-usuario', function () {
     try {
-        // 1. Limpiar la caché de rutas y configuración
-        Artisan::call('optimize:clear');
-        $meta1 = "1. Caché del sistema completamente limpia.\n";
-
-        // 2. Verificar y crear (o actualizar) el administrador
-        $emailAdmin = 'admin@rapitaxi.com';
-        $user = User::where('email', $emailAdmin)->first();
-
-        if (!$user) {
-            User::create([
-                'name' => 'Administrador',
-                'email' => $emailAdmin,
-                'password' => Hash::make('12345678'), // Contraseña de prueba
-            ]);
-            $meta2 = "2. Usuario administrador creado exitosamente con clave 12345678.";
-        } else {
-            $user->password = Hash::make('12345678');
-            $user->save();
-            $meta2 = "2. El usuario ya existía. La contraseña fue actualizada a 12345678.";
+        if (Schema::hasTable('users') && User::count() > 0) {
+            return response()->json([
+                'status' => 'disabled',
+                'message' => 'El setup inicial ya no esta disponible porque ya existen usuarios.',
+            ], 403);
         }
+
+        Artisan::call('migrate', ['--force' => true]);
+
+        if (User::count() > 0) {
+            return response()->json([
+                'status' => 'disabled',
+                'message' => 'El setup inicial ya no esta disponible porque ya existen usuarios.',
+            ], 403);
+        }
+
+        User::create([
+            'name' => 'Administrador',
+            'email' => 'admin@rapitaxi.com',
+            'password' => Hash::make('12345678'),
+        ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => $meta1 . $meta2
+            'message' => 'Usuario administrador inicial creado exitosamente.',
         ], 200);
-
     } catch (\Exception $e) {
         return response()->json([
             'status' => 'error',
-            'message' => $e->getMessage()
+            'message' => $e->getMessage(),
         ], 500);
     }
 });
-// =========================================================================
 
-// Rutas protegidas
-Route::middleware('auth:sanctum')->group(function () {
-    
-    // Ruta por defecto para obtener el usuario autenticado
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
+    // Estas dos son validas para cualquier usuario autenticado (admin, operador o socio).
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::apiResource('socios', SocioController::class);
-    Route::apiResource('aportaciones', AportacionController::class)->only(['index', 'store', 'destroy']);
-    Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
-    Route::get('expedientes/{id}/download', [ExpedienteController::class, 'download']);
-    Route::apiResource('vehiculos', VehiculoController::class);
-    Route::apiResource('revisiones', RevisionController::class);
-    Route::apiResource('mantenimientos', MantenimientoController::class)->only(['index', 'store', 'update', 'destroy']);    
-    
-    Route::get('/reportes/cuadro-maestro', [ReporteController::class, 'cuadroMaestro']);
-    Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
-    Route::apiResource('libros-contables', LibroContableController::class)->only(['index', 'store', 'destroy']);
-    
-    // Rutas de Notificaciones y Configuración
-    Route::get('notificaciones', [NotificacionController::class, 'index']);
-    Route::put('notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida']);
-    Route::put('notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas']);
-    
-    Route::get('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'index']);
-    Route::put('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'update']);
+    // Todo lo demas es el panel administrativo: nadie con rol "socio" puede
+    // entrar aqui, ni desde la UI ni llamando a la API directamente.
+    Route::middleware('role:admin|operador')->group(function () {
+        Route::apiResource('socios', SocioController::class);
+        Route::apiResource('aportaciones', AportacionController::class)->only(['index', 'store', 'destroy']);
+        Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
+        Route::get('expedientes/{id}/download', [ExpedienteController::class, 'download']);
+        Route::apiResource('vehiculos', VehiculoController::class);
+        Route::apiResource('revisiones', RevisionController::class);
+        Route::apiResource('mantenimientos', MantenimientoController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::apiResource('libros-contables', LibroContableController::class)->only(['index', 'store', 'destroy']);
+
+        Route::get('/reportes/cuadro-maestro', [ReporteController::class, 'cuadroMaestro']);
+        Route::get('/dashboard/stats', [DashboardController::class, 'stats']);
+
+        Route::get('notificaciones', [NotificacionController::class, 'index']);
+        Route::put('notificaciones/{id}/leer', [NotificacionController::class, 'marcarLeida']);
+        Route::put('notificaciones/leer-todas', [NotificacionController::class, 'marcarTodasLeidas']);
+    });
+
+    // Solo el admin: gestion de personal interno, cuentas de socios y configuracion critica.
+    Route::middleware('role:admin')->group(function () {
+        Route::apiResource('usuarios', UsuarioController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::post('socios/{socio}/cuenta', [SocioCuentaController::class, 'store']);
+        Route::put('socios/{socio}/cuenta/estado', [SocioCuentaController::class, 'actualizarEstado']);
+
+        Route::get('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'index']);
+        Route::put('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'update']);
+    });
 });

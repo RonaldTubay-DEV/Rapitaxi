@@ -1,10 +1,33 @@
 import React, { useState } from 'react';
-import { FileText, Printer, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, Printer, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showSuccessToast } from '../utils/feedback';
 
+// Cachea el ultimo cuadro maestro generado en esta pestana. Asi, si el
+// usuario navega a otra pantalla y regresa, ve el mismo reporte de inmediato
+// en vez de tener que volver a consultarlo a la base de datos.
+const CACHE_KEY = 'rapitaxi_cuadro_maestro';
+
+const readCache = () => {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = (data) => {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ data, generatedAt: new Date().toISOString() }));
+  } catch {
+    // sessionStorage puede fallar en modos privados; no es critico, simplemente no cacheamos.
+  }
+};
+
 const ActasScreen = () => {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState(() => readCache()?.data || []);
+  const [generatedAt, setGeneratedAt] = useState(() => readCache()?.generatedAt || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -14,23 +37,27 @@ const ActasScreen = () => {
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/reportes/cuadro-maestro`, {
-        headers: { 
+        headers: {
             'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json' 
+            'Accept': 'application/json'
         }
       });
-      
+
       if (response.ok) {
-        setData(await response.json());
+        const reporte = await response.json();
+        setData(reporte);
+        const now = new Date().toISOString();
+        setGeneratedAt(now);
+        writeCache(reporte);
         showSuccessToast('Cuadro maestro cargado exitosamente.');
       } else {
         const errorData = await response.json();
         console.error("DETALLE DEL ERROR:", errorData);
-        
+
         setError(errorData.message || 'No se pudo generar el cuadro maestro. Intenta nuevamente o revisa las aportaciones registradas.');
       }
-    } catch (err) { 
-      setError('Error de conexión con el servidor.'); 
+    } catch (err) {
+      setError('Error de conexión con el servidor.');
     }
     finally { setLoading(false); }
   };
@@ -50,14 +77,25 @@ const ActasScreen = () => {
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Generador de Reportes</h2>
             <p className="text-slate-500 mt-1">Generación de documentos oficiales y matriz de flota.</p>
+            {generatedAt && (
+              <p className="mt-1 text-xs text-slate-400">
+                Generado el {new Date(generatedAt).toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })}
+              </p>
+            )}
           </div>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
-            <button 
+            <button
               onClick={generarPrevisualizacion} disabled={loading}
               className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-6 py-3 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-all shadow-md"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <FileText className="w-5 h-5 mr-2" />} 
-              Cargar Cuadro Maestro
+              {loading ? (
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              ) : data.length > 0 ? (
+                <RefreshCw className="w-5 h-5 mr-2" />
+              ) : (
+                <FileText className="w-5 h-5 mr-2" />
+              )}
+              {data.length > 0 ? 'Actualizar Cuadro Maestro' : 'Cargar Cuadro Maestro'}
             </button>
             {data.length > 0 && (
               <button 

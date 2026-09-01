@@ -22,7 +22,7 @@ class Socio extends Model
         'observaciones',
     ];
 
-    protected $appends = ['estado_pago_actual', 'numero_vehiculo', 'placa'];
+    protected $appends = ['estado_pago_actual', 'numero_vehiculo', 'placa', 'cuenta_activa'];
 
     // 2. Renombra la relación y usa la clase Aportacion
     public function aportaciones()
@@ -35,27 +35,47 @@ class Socio extends Model
         return $this->hasMany(Vehiculo::class);
     }
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function getCuentaActivaAttribute()
+    {
+        return $this->user?->is_active;
+    }
+
     public function getEstadoPagoActualAttribute()
     {
         $mesActual = Carbon::now()->month;
         $anioActual = Carbon::now()->year;
 
-        // 3. Usa la nueva relación 'aportaciones()'
-        $pagoDelMes = $this->aportaciones()
-            ->where('mes_pagado', $mesActual)
-            ->where('anio_pagado', $anioActual)
-            ->first();
+        // Si 'aportaciones' ya viene precargada (eager load) filtramos en PHP y no
+        // disparamos una consulta nueva por cada socio (evita N+1 al listar socios).
+        if ($this->relationLoaded('aportaciones')) {
+            $pagoDelMes = $this->aportaciones->first(
+                fn ($a) => $a->mes_pagado == $mesActual && $a->anio_pagado == $anioActual
+            );
+        } else {
+            $pagoDelMes = $this->aportaciones()
+                ->where('mes_pagado', $mesActual)
+                ->where('anio_pagado', $anioActual)
+                ->first();
+        }
 
         return $pagoDelMes ? 'Al día' : 'En mora';
     }
 
     public function getNumeroVehiculoAttribute()
     {
-        return $this->vehiculos()->first()?->numero_vehiculo ?? null;
+        // Acceso como propiedad (sin parentesis): usa la relacion precargada si
+        // existe, o la carga una sola vez y la cachea. Evita una query nueva
+        // cada vez que se llama, que es lo que hacia $this->vehiculos()->first().
+        return $this->vehiculos->first()?->numero_vehiculo ?? null;
     }
 
     public function getPlacaAttribute()
     {
-        return $this->vehiculos()->first()?->placa ?? null;
+        return $this->vehiculos->first()?->placa ?? null;
     }
 }

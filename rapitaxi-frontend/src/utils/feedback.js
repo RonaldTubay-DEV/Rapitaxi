@@ -7,14 +7,18 @@ export const setToastsEnabled = (enabled) => {
   window.dispatchEvent(new CustomEvent('toast-preference-changed', { detail: { enabled } }));
 };
 
-export const showSuccessToast = (message) => {
+const dispatchToast = (type, message) => {
   if (!areToastsEnabled()) return;
 
   window.dispatchEvent(new CustomEvent('rapitaxi-toast', {
     detail: {
-      id: Date.now(),
-      type: 'success',
+      id: Date.now() + Math.random(),
+      type,
       message
     }
   }));
 };
+
+export const showSuccessToast = (message) => dispatchToast('success', message);
+
+export const showErrorToast = (message) => dispatchToast('error', message);

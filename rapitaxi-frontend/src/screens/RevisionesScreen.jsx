@@ -4,7 +4,8 @@ import {
   X, Save, Plus, Calendar, CheckCircle, XCircle, Clock 
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { limitText } from '../utils/inputFormatters';
 const RevisionesScreen = () => {
   // ==========================================
@@ -171,7 +172,7 @@ const RevisionesScreen = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este registro legal permanentemente?')) return;
+    if (!(await confirmDialog('¿Eliminar este registro legal permanentemente?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/revisiones/${id}`, {
@@ -182,7 +183,7 @@ const RevisionesScreen = () => {
         setRevisiones(revisiones.filter(r => r.id !== id));
         showSuccessToast('Tramite legal eliminado exitosamente.');
       }
-    } catch (err) { alert('Error de conexión.'); }
+    } catch (err) { showErrorToast('Error de conexión.'); }
   };
 
   const revisionesFiltradas = revisiones.filter(r => {

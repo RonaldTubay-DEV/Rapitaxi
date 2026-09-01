@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, KeyRound, UserCheck, UserX, UserSearch } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { limitText, onlyDigits } from '../utils/inputFormatters';
+import { apiClient, ApiError } from '../lib/apiClient';
+import { useAuth } from '../features/auth/AuthContext';
+
 const SociosScreen = () => {
   // ==========================================
   // ESTADOS
   // ==========================================
+  const { role } = useAuth();
+  const puedeGestionarCuentas = role === 'admin';
   const [socios, setSocios] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -28,6 +34,19 @@ const SociosScreen = () => {
     estado: 'Activo',
     observaciones: ''
   });
+
+  // Modal de cuenta de acceso del socio
+  const [cuentaSocio, setCuentaSocio] = useState(null);
+  const [cuentaForm, setCuentaForm] = useState({ email: '', password: '' });
+  const [cuentaError, setCuentaError] = useState('');
+  const [isCuentaSubmitting, setIsCuentaSubmitting] = useState(false);
+
+  // Buscador dedicado para localizar al socio antes de crearle la cuenta
+  const [isBuscadorOpen, setIsBuscadorOpen] = useState(false);
+  const [buscadorQuery, setBuscadorQuery] = useState('');
+  const [buscadorResultados, setBuscadorResultados] = useState([]);
+  const [buscadorLoading, setBuscadorLoading] = useState(false);
+  const [buscadorHaBuscado, setBuscadorHaBuscado] = useState(false);
 
   // ==========================================
   // FUNCIONES DE API
@@ -163,7 +182,7 @@ const SociosScreen = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este registro?')) return;
+    if (!(await confirmDialog('¿Estás seguro de que deseas eliminar este registro?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/socios/${id}`, {
@@ -175,8 +194,97 @@ const SociosScreen = () => {
         showSuccessToast('Socio eliminado exitosamente.');
       }
     } catch (err) {
-      alert('Error de conexión.');
+      showErrorToast('Error de conexión.');
     }
+  };
+
+  const openCuentaModal = (socio) => {
+    setCuentaSocio(socio);
+    setCuentaForm({ email: socio.correo || '', password: '' });
+    setCuentaError('');
+  };
+
+  const closeCuentaModal = () => {
+    setCuentaSocio(null);
+    setCuentaError('');
+  };
+
+  const handleCrearCuenta = async (e) => {
+    e.preventDefault();
+    setIsCuentaSubmitting(true);
+    setCuentaError('');
+
+    try {
+      const data = await apiClient.post(`/socios/${cuentaSocio.id}/cuenta`, cuentaForm);
+      setSocios(socios.map((s) => (s.id === cuentaSocio.id ? data.socio : s)));
+      showSuccessToast('Cuenta de acceso creada exitosamente.');
+      closeCuentaModal();
+    } catch (err) {
+      const message = err instanceof ApiError
+        ? Object.values(err.data?.errors || {})[0]?.[0] || err.message
+        : 'Error de conexión.';
+      setCuentaError(message);
+    } finally {
+      setIsCuentaSubmitting(false);
+    }
+  };
+
+  const handleToggleCuenta = async (socio) => {
+    const activar = !socio.cuenta_activa;
+    const confirmMessage = activar
+      ? `¿Reactivar el acceso de ${socio.nombre}?`
+      : `¿Dar de baja el acceso de ${socio.nombre}? No podrá iniciar sesión hasta que lo reactives.`;
+
+    if (!(await confirmDialog(confirmMessage))) return;
+
+    try {
+      const data = await apiClient.put(`/socios/${socio.id}/cuenta/estado`, { activa: activar });
+      setSocios(socios.map((s) => (s.id === socio.id ? data.socio : s)));
+      showSuccessToast(activar ? 'Cuenta activada exitosamente.' : 'Cuenta desactivada exitosamente.');
+    } catch (err) {
+      showErrorToast(err instanceof ApiError ? err.message : 'Error de conexión.');
+    }
+  };
+
+  const openBuscador = () => {
+    setBuscadorQuery('');
+    setBuscadorResultados([]);
+    setBuscadorHaBuscado(false);
+    setIsBuscadorOpen(true);
+  };
+
+  const closeBuscador = () => setIsBuscadorOpen(false);
+
+  useEffect(() => {
+    if (!isBuscadorOpen) return undefined;
+
+    const query = buscadorQuery.trim();
+    if (query === '') {
+      setBuscadorResultados([]);
+      setBuscadorHaBuscado(false);
+      return undefined;
+    }
+
+    setBuscadorLoading(true);
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const data = await apiClient.get(`/socios?search=${encodeURIComponent(query)}`);
+        setBuscadorResultados(data);
+      } catch {
+        setBuscadorResultados([]);
+      } finally {
+        setBuscadorHaBuscado(true);
+        setBuscadorLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [buscadorQuery, isBuscadorOpen]);
+
+  const handleSeleccionarDeBuscador = (socio) => {
+    if (socio.user_id) return; // ya tiene cuenta, no hacemos nada al hacer click
+    closeBuscador();
+    openCuentaModal(socio);
   };
 
   return (
@@ -198,6 +306,11 @@ const SociosScreen = () => {
               className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
           </div>
+          {puedeGestionarCuentas && (
+            <button onClick={openBuscador} className="w-full sm:w-auto bg-white border border-slate-200 text-slate-700 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
+              <UserSearch className="w-5 h-5 mr-2" /> Crear Cuenta de Socio
+            </button>
+          )}
           <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
             <Plus className="w-5 h-5 mr-2" /> Nuevo Socio
           </button>
@@ -221,6 +334,7 @@ const SociosScreen = () => {
                 <th className="p-4">Cédula</th>
                 <th className="p-4">Contacto</th>
                 <th className="p-4">Estado Pago</th>
+                <th className="p-4">Cuenta de Acceso</th>
                 <th className="p-4">Observaciones</th>
                 <th className="p-4 text-center">Acciones</th>
               </tr>
@@ -228,11 +342,11 @@ const SociosScreen = () => {
             <tbody className="divide-y divide-slate-100 text-slate-700 text-sm">
               {isLoading ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-yellow-500" />Buscando...</td>
+                  <td colSpan="7" className="p-8 text-center text-slate-500"><Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-yellow-500" />Buscando...</td>
                 </tr>
               ) : socios.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-500">No se encontraron registros.</td>
+                  <td colSpan="7" className="p-8 text-center text-slate-500">No se encontraron registros.</td>
                 </tr>
               ) : (
                 socios.map((socio) => (
@@ -250,6 +364,17 @@ const SociosScreen = () => {
                         {socio.estado_pago_actual}
                       </span>
                     </td>
+                    <td className="p-4">
+                      {socio.user_id ? (
+                        <span className={`px-3 py-1 text-xs font-bold rounded-full ${
+                          socio.cuenta_activa ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          {socio.cuenta_activa ? 'Activa' : 'Dada de baja'}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-xs">Sin cuenta</span>
+                      )}
+                    </td>
                     <td className="p-4 max-w-xs truncate">
                       {socio.observaciones ? (
                         <span className="text-slate-600 text-xs bg-slate-100 px-2 py-1 rounded border border-slate-200 block truncate" title={socio.observaciones}>
@@ -260,8 +385,25 @@ const SociosScreen = () => {
                       )}
                     </td>
                     <td className="p-4 flex justify-center space-x-2">
-                      <button onClick={() => openEditModal(socio)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                      <button onClick={() => handleDelete(socio.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => openEditModal(socio)} title="Editar" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                      {puedeGestionarCuentas && (
+                        socio.user_id ? (
+                          <button
+                            onClick={() => handleToggleCuenta(socio)}
+                            title={socio.cuenta_activa ? 'Dar de baja la cuenta' : 'Reactivar la cuenta'}
+                            className={`p-2 rounded-lg transition-colors ${
+                              socio.cuenta_activa ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'
+                            }`}
+                          >
+                            {socio.cuenta_activa ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                          </button>
+                        ) : (
+                          <button onClick={() => openCuentaModal(socio)} title="Crear cuenta de acceso" className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+                        )
+                      )}
+                      <button onClick={() => handleDelete(socio.id)} title="Eliminar" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))
@@ -347,6 +489,120 @@ const SociosScreen = () => {
                   {isSubmitting ? <><Loader2 className="w-6 h-6 mr-2 animate-spin" /> Guardando...</> : <><Save className="w-5 h-5 mr-2" /> {editingId ? 'Guardar Cambios' : 'Registrar Socio'}</>}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL BUSCADOR: localizar al socio antes de crearle la cuenta */}
+      {isBuscadorOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Crear Cuenta de Socio</h3>
+                <p className="text-slate-500 mt-1 text-sm">Busca al socio por nombre o cédula. Debe estar registrado en el sistema.</p>
+              </div>
+              <button onClick={closeBuscador} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><X className="w-6 h-6" /></button>
+            </div>
+
+            <div className="p-4 pt-2 sm:p-6 sm:pt-2">
+              <div className="relative mb-4">
+                <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text" autoFocus value={buscadorQuery} onChange={(e) => setBuscadorQuery(e.target.value)}
+                  placeholder="Nombre o cédula del socio..."
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-slate-50"
+                />
+              </div>
+
+              <div className="max-h-72 overflow-y-auto space-y-2">
+                {buscadorLoading ? (
+                  <div className="text-center text-slate-500 py-6"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-yellow-500" />Buscando...</div>
+                ) : buscadorQuery.trim() === '' ? (
+                  <p className="text-center text-slate-400 text-sm py-6">Escribe para buscar entre los socios registrados.</p>
+                ) : buscadorHaBuscado && buscadorResultados.length === 0 ? (
+                  <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg flex items-start">
+                    <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-red-700 font-medium">Este socio no está registrado en el sistema. Regístralo primero con "Nuevo Socio".</p>
+                  </div>
+                ) : (
+                  buscadorResultados.map((socio) => (
+                    <button
+                      key={socio.id}
+                      type="button"
+                      onClick={() => handleSeleccionarDeBuscador(socio)}
+                      disabled={Boolean(socio.user_id)}
+                      className={`w-full text-left p-3 rounded-xl border flex items-center justify-between transition-colors ${
+                        socio.user_id ? 'border-slate-100 bg-slate-50 cursor-not-allowed' : 'border-slate-200 hover:border-yellow-400 hover:bg-yellow-50'
+                      }`}
+                    >
+                      <div>
+                        <p className="font-bold text-slate-900">{socio.nombre}</p>
+                        <p className="text-xs text-slate-500">{socio.cedula || 'Sin cédula registrada'}</p>
+                      </div>
+                      {socio.user_id ? (
+                        <span className={`px-2 py-1 text-xs font-bold rounded-full ${socio.cuenta_activa ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
+                          {socio.cuenta_activa ? 'Ya tiene cuenta' : 'Cuenta dada de baja'}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-700">Sin cuenta</span>
+                      )}
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CREACIÓN DE CUENTA DE ACCESO */}
+      {cuentaSocio && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Crear Cuenta de Acceso</h3>
+                <p className="text-slate-500 mt-1 text-sm">Para {cuentaSocio.nombre}. El socio usará estas credenciales para su portal.</p>
+              </div>
+              <button onClick={closeCuentaModal} className="text-slate-400 hover:text-slate-600 transition-colors p-1"><X className="w-6 h-6" /></button>
+            </div>
+
+            <form onSubmit={handleCrearCuenta} className="p-4 pt-4 sm:p-6 sm:pt-4 space-y-4">
+              {cuentaError && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center"><AlertCircle className="w-4 h-4 mr-2" />{cuentaError}</div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Correo de acceso</label>
+                <input
+                  type="email" required maxLength="100"
+                  value={cuentaForm.email}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, email: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700"
+                  placeholder="socio@correo.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Contraseña inicial</label>
+                <input
+                  type="password" required minLength="8" maxLength="100"
+                  value={cuentaForm.password}
+                  onChange={(e) => setCuentaForm({ ...cuentaForm, password: e.target.value })}
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700"
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
+
+              <button
+                type="submit" disabled={isCuentaSubmitting}
+                className={`w-full py-3 rounded-xl font-bold flex items-center justify-center transition-colors shadow-md
+                  ${isCuentaSubmitting ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-[#FFCC00] text-slate-900 hover:bg-yellow-500'}`}
+              >
+                {isCuentaSubmitting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Creando...</> : <><KeyRound className="w-5 h-5 mr-2" /> Crear Cuenta</>}
+              </button>
             </form>
           </div>
         </div>

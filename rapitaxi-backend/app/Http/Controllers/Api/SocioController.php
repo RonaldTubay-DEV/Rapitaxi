@@ -14,20 +14,24 @@ class SocioController extends Controller
     {
         $query = Socio::orderBy('id', 'desc');
 
-        // Si el usuario escribe algo en el buscador del frontend, filtramos la consulta
+        // Si el usuario escribe algo en el buscador del frontend, filtramos la consulta.
+        // LOWER() en ambos lados para que la busqueda no distinga mayusculas/minusculas
+        // (en PostgreSQL, a diferencia de MySQL, LIKE por defecto SI distingue).
         if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('nombre', 'like', '%' . $search . '%')
-                  ->orWhere('cedula', 'like', '%' . $search . '%')
+            $search = '%' . mb_strtolower($request->search) . '%';
+            $query->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(nombre) LIKE ?', [$search])
+                  ->orWhereRaw('LOWER(cedula) LIKE ?', [$search])
                   ->orWhereHas('vehiculos', function ($vehiculosQuery) use ($search) {
-                      $vehiculosQuery->where('numero_vehiculo', 'like', '%' . $search . '%')
-                          ->orWhere('placa', 'like', '%' . $search . '%');
+                      $vehiculosQuery->whereRaw('LOWER(numero_vehiculo) LIKE ?', [$search])
+                          ->orWhereRaw('LOWER(placa) LIKE ?', [$search]);
                   });
             });
         }
 
-        $socios = $query->with('vehiculos')->get();
+        // Precargamos tambien 'aportaciones' para que el accessor estado_pago_actual
+        // no dispare una consulta nueva por cada socio de la lista.
+        $socios = $query->with(['vehiculos', 'user', 'aportaciones'])->get();
         return response()->json($socios, 200);
     }
 

@@ -4,7 +4,8 @@ import {
   Gauge, FileText, Upload, BatteryCharging, CircleDot
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { limitText, normalizeDecimal, onlyDigits } from '../utils/inputFormatters';
 
 const MantenimientoScreen = () => {
@@ -424,10 +425,10 @@ const MantenimientoScreen = () => {
   const deleteMantenimiento = async (id) => {
     const mantenimiento = mantenimientos.find(item => item.id === id);
     if (mantenimiento?.estado === 'Completado') {
-      alert('No se puede eliminar un mantenimiento completado.');
+      showErrorToast('No se puede eliminar un mantenimiento completado.');
       return;
     }
-    if (!window.confirm('¿Eliminar este registro permanentemente?')) return;
+    if (!(await confirmDialog('¿Eliminar este registro permanentemente?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/mantenimientos/${id}`, {
@@ -438,14 +439,14 @@ const MantenimientoScreen = () => {
         setMantenimientos(mantenimientos.filter(m => m.id !== id));
         showSuccessToast('Mantenimiento eliminado exitosamente.');
       }
-    } catch (err) { alert('Error al eliminar.'); }
+    } catch (err) { showErrorToast('Error al eliminar.'); }
   };
 
   const handleStatusChange = async (id, nuevoEstado) => {
     const m = mantenimientos.find(item => item.id === id);
     if (m.estado === 'Completado') return;
     if (m.estado === 'En Proceso' && nuevoEstado === 'Programado') {
-      alert('El estado solo puede avanzar, no regresar a Programado.');
+      showErrorToast('El estado solo puede avanzar, no regresar a Programado.');
       return;
     }
     if (nuevoEstado === 'Completado') {
@@ -504,15 +505,15 @@ const MantenimientoScreen = () => {
         showSuccessToast('Estado de mantenimiento actualizado exitosamente.');
       } else {
         const err = await response.json();
-        alert(getApiErrorMessage(err, 'Error al actualizar el estado.'));
+        showErrorToast(getApiErrorMessage(err, 'Error al actualizar el estado.'));
       }
-    } catch (err) { alert('Error de conexión.'); }
+    } catch (err) { showErrorToast('Error de conexión.'); }
   };
 
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (!uploadFile) {
-      alert('Debes adjuntar el comprobante de pago.');
+      showErrorToast('Debes adjuntar el comprobante de pago.');
       return;
     }
     const mantenimientoActual = mantenimientos.find(item => item.id === mantenimientoIdToComplete);

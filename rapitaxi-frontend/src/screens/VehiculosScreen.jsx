@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Car, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, Plus } from 'lucide-react';
 import { API_URL } from '../apiConfig';
-import { showSuccessToast } from '../utils/feedback';
+import { showErrorToast, showSuccessToast } from '../utils/feedback';
+import { confirmDialog } from '../utils/confirmDialog';
 import { formatPlate, formatUnitNumber, limitText, onlyDigits } from '../utils/inputFormatters';
 const VehiculosScreen = () => {
   const [vehiculos, setVehiculos] = useState([]);
@@ -117,7 +118,7 @@ const VehiculosScreen = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('¿Eliminar este vehículo del sistema?')) return;
+    if (!(await confirmDialog('¿Eliminar este vehículo del sistema?'))) return;
     try {
       const token = localStorage.getItem('auth_token');
       const response = await fetch(`${API_URL}/vehiculos/${id}`, {
@@ -128,7 +129,7 @@ const VehiculosScreen = () => {
         setVehiculos(vehiculos.filter(v => v.id !== id));
         showSuccessToast('Vehiculo eliminado exitosamente.');
       }
-    } catch (err) { alert('Error al eliminar.'); }
+    } catch (err) { showErrorToast('Error al eliminar.'); }
   };
 
   const vehiculosFiltrados = vehiculos.filter(v => {
