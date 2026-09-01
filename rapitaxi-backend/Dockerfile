@@ -31,5 +31,5 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 # Puerto
 EXPOSE 80
 
-# Ejecutar migraciones y luego iniciar el servidor
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=80
+# Ejecutar migraciones, sembrar roles/permisos (idempotente, seguro en cada arranque) y luego iniciar el servidor
+CMD php artisan migrate --force && php artisan db:seed --class=RolesAndPermissionsSeeder --force && php artisan serve --host=0.0.0.0 --port=80
