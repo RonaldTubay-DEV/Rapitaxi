@@ -19,7 +19,21 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
         ]);
+
+        // Este backend no tiene ninguna pantalla de login por sesion (routes/web.php
+        // solo tiene '/'), todo el login pasa por POST /api/login. Sin esto, un
+        // invitado sin token en una ruta protegida hace que Laravel intente armar
+        // una redireccion a la ruta con nombre 'login', que no existe, y eso
+        // provoca un 500 (RouteNotFoundException) en vez de un 401 limpio.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Este backend es solo API: cualquier error en rutas api/* debe responder
+        // en JSON siempre, sin importar el header Accept del cliente. Sin esto,
+        // una peticion sin ese header a una ruta protegida sin sesion valida
+        // hace que Laravel intente redirigir a una ruta 'login' que no existe
+        // aqui, y eso termina en un 500 en vez de un 401 limpio.
+        $exceptions->shouldRenderJsonWhen(function ($request, \Throwable $e) {
+            return $request->is('api/*') || $request->expectsJson();
+        });
     })->create();
