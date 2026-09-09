@@ -596,9 +596,21 @@ const MantenimientoScreen = () => {
     }
   };
 
-  // Función para obtener la URL correcta del archivo subido
-  const getStorageUrl = (ruta) => {
-    return API_URL.replace('/api', '/storage/') + ruta;
+  // El backend devuelve un enlace temporal (5 min) que apunta directo al
+  // bucket en R2: el navegador abre el archivo ahi, no pasa por nuestro servidor.
+  const verComprobante = async (id) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/mantenimientos/${id}/comprobante`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('No se pudo abrir el comprobante.');
+
+      const { url } = await response.json();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      showErrorToast('No se pudo abrir el comprobante.');
+    }
   };
 
   return (
@@ -694,9 +706,9 @@ const MantenimientoScreen = () => {
                     <div className="text-xs font-bold uppercase text-slate-400">Pendiente de cierre</div>
                   )}
                   {m.comprobante_ruta && (
-                    <a href={getStorageUrl(m.comprobante_ruta)} target="_blank" rel="noreferrer" className="text-[10px] text-blue-500 flex items-center mt-1 hover:underline">
+                    <button type="button" onClick={() => verComprobante(m.id)} className="text-[10px] text-blue-500 flex items-center mt-1 hover:underline">
                       <FileText className="w-3 h-3 mr-1" /> Ver Factura
-                    </a>
+                    </button>
                   )}
                 </td>
                 <td className="p-4 text-center">

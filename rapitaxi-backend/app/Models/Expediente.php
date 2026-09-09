@@ -16,17 +16,8 @@ class Expediente extends Model
         'ruta_archivo',
     ];
 
-    // Esto le dice a Laravel que siempre devuelva el enlace completo al archivo
-    protected $appends = ['url_archivo'];
-
     public function socio()
     {
         return $this->belongsTo(Socio::class);
-    }
-
-    // Generador de la URL para que React pueda mostrar el archivo
-    public function getUrlArchivoAttribute()
-    {
-        return asset('storage/' . $this->ruta_archivo);
     }
 }

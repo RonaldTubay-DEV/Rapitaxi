@@ -119,6 +119,8 @@ const ExpedientesScreen = () => {
     } catch (err) { showErrorToast('Error al eliminar.'); }
   };
 
+  // El backend devuelve un enlace temporal (5 min) que apunta directo al
+  // bucket en R2: el navegador abre el archivo ahi, no pasa por nuestro servidor.
   const downloadDocument = async (doc) => {
     try {
       const token = localStorage.getItem('auth_token');
@@ -127,26 +129,13 @@ const ExpedientesScreen = () => {
       });
 
       if (!response.ok) {
-        throw new Error('No se pudo descargar el documento.');
+        throw new Error('No se pudo abrir el documento.');
       }
 
-      const blob = await response.blob();
-      const objectUrl = window.URL.createObjectURL(blob);
-
-      const fallbackBaseName = (doc.nombre_documento || 'documento').replace(/[\\/:*?"<>|]+/g, '_').trim();
-      const fallbackExtension = (doc.tipo_documento || '').toLowerCase();
-      const fallbackFileName = fallbackExtension ? `${fallbackBaseName}.${fallbackExtension}` : fallbackBaseName;
-
-      const link = document.createElement('a');
-      link.href = objectUrl;
-      link.download = fallbackFileName || 'documento';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.URL.revokeObjectURL(objectUrl);
+      const { url } = await response.json();
+      window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
-      showErrorToast('No se pudo descargar el documento.');
+      showErrorToast('No se pudo abrir el documento.');
     }
   };
 

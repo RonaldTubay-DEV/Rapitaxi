@@ -14,50 +14,10 @@ use App\Http\Controllers\Api\SocioController;
 use App\Http\Controllers\Api\SocioCuentaController;
 use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\VehiculoController;
-use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\Schema;
 
 Route::post('/login', [AuthController::class, 'login']);
-
-Route::get('/setup-primer-usuario', function () {
-    try {
-        if (Schema::hasTable('users') && User::count() > 0) {
-            return response()->json([
-                'status' => 'disabled',
-                'message' => 'El setup inicial ya no esta disponible porque ya existen usuarios.',
-            ], 403);
-        }
-
-        Artisan::call('migrate', ['--force' => true]);
-
-        if (User::count() > 0) {
-            return response()->json([
-                'status' => 'disabled',
-                'message' => 'El setup inicial ya no esta disponible porque ya existen usuarios.',
-            ], 403);
-        }
-
-        User::create([
-            'name' => 'Administrador',
-            'email' => 'admin@rapitaxi.com',
-            'password' => Hash::make('12345678'),
-        ]);
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Usuario administrador inicial creado exitosamente.',
-        ], 200);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
-    }
-});
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Estas dos son validas para cualquier usuario autenticado (admin, operador o socio).
@@ -76,7 +36,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::apiResource('vehiculos', VehiculoController::class);
         Route::apiResource('revisiones', RevisionController::class);
         Route::apiResource('mantenimientos', MantenimientoController::class)->only(['index', 'store', 'update', 'destroy']);
+        Route::get('mantenimientos/{id}/comprobante', [MantenimientoController::class, 'download']);
         Route::apiResource('libros-contables', LibroContableController::class)->only(['index', 'store', 'destroy']);
+        Route::get('libros-contables/{id}/download', [LibroContableController::class, 'download']);
 
         Route::get('/reportes/cuadro-maestro', [ReporteController::class, 'cuadroMaestro']);
         Route::get('/dashboard/stats', [DashboardController::class, 'stats']);

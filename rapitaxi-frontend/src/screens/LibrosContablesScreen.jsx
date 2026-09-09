@@ -82,6 +82,23 @@ const LibrosContablesScreen = () => {
     finally { setIsSubmitting(false); }
   };
 
+  // El backend devuelve un enlace temporal (5 min) que apunta directo al
+  // bucket en R2: el navegador abre el archivo ahi, no pasa por nuestro servidor.
+  const verLibro = async (id) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(`${API_URL}/libros-contables/${id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('No se pudo abrir el documento.');
+
+      const { url } = await response.json();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      showErrorToast('No se pudo abrir el documento.');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!(await confirmDialog('¿Eliminar este libro contable permanentemente?'))) return;
     try {
@@ -144,9 +161,9 @@ const LibrosContablesScreen = () => {
                   <span className="inline-block mt-1 bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded-md font-semibold">{libro.mes_anio}</span>
                 </div>
               </div>
-              <a href={libro.url_archivo} target="_blank" rel="noreferrer" className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl flex justify-center items-center">
+              <button type="button" onClick={() => verLibro(libro.id)} className="w-full py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl flex justify-center items-center">
                 <Download className="w-4 h-4 mr-2" /> Visualizar
-              </a>
+              </button>
             </div>
           ))}
         </div>

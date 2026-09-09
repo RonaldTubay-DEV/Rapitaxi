@@ -23,7 +23,7 @@ class LibroContableController extends Controller
             'descripcion' => 'nullable|string|max:500'
         ]);
 
-        $ruta = $request->file('documento')->store('libros_contables', 'public');
+        $ruta = $request->file('documento')->store('libros_contables', 's3');
 
         $libro = LibroContable::create([
             'titulo' => $request->titulo,
@@ -38,10 +38,27 @@ class LibroContableController extends Controller
     public function destroy($id)
     {
         $libro = LibroContable::findOrFail($id);
-        if (Storage::disk('public')->exists($libro->archivo_ruta)) {
-            Storage::disk('public')->delete($libro->archivo_ruta);
-        }
+        Storage::disk('s3')->delete($libro->archivo_ruta);
         $libro->delete();
         return response()->json(['message' => 'Eliminado'], 200);
+    }
+
+    // Genera un enlace temporal (5 min) para ver/descargar el PDF directo
+    // desde R2. El archivo no pasa por este servidor.
+    public function download($id)
+    {
+        $libro = LibroContable::findOrFail($id);
+
+        $base = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim((string) $libro->titulo));
+        $base = trim($base, '_');
+        $fileName = ($base !== '' ? $base : 'libro') . '.pdf';
+
+        $url = Storage::disk('s3')->temporaryUrl(
+            $libro->archivo_ruta,
+            now()->addMinutes(5),
+            ['ResponseContentDisposition' => 'inline; filename="' . $fileName . '"']
+        );
+
+        return response()->json(['url' => $url], 200);
     }
 }

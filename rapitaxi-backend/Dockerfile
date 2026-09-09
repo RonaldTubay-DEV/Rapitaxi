@@ -31,5 +31,8 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 # Puerto
 EXPOSE 80
 
-# Ejecutar migraciones, sembrar roles/permisos (idempotente, seguro en cada arranque) y luego iniciar el servidor
-CMD php artisan migrate --force && php artisan db:seed --class=RolesAndPermissionsSeeder --force && php artisan serve --host=0.0.0.0 --port=80
+# Ejecutar migraciones, sembrar roles/permisos y el admin inicial (todo
+# idempotente, seguro en cada arranque) y luego iniciar el servidor.
+# El admin inicial solo se crea si ADMIN_EMAIL/ADMIN_PASSWORD estan
+# definidos como variables de entorno (ver AdminUserSeeder).
+CMD php artisan migrate --force && php artisan db:seed --force && php artisan serve --host=0.0.0.0 --port=80

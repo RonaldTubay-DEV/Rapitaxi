@@ -22,17 +22,8 @@ class Mantenimiento extends Model
         'observaciones',
     ];
 
-    // Le decimos a Laravel que envíe la URL completa de la factura al frontend
-    protected $appends = ['url_comprobante'];
-
     public function vehiculo()
     {
         return $this->belongsTo(Vehiculo::class);
-    }
-
-    // Generador del enlace para ver la factura en React
-    public function getUrlComprobanteAttribute()
-    {
-        return $this->comprobante_ruta ? asset('storage/' . $this->comprobante_ruta) : null;
     }
 }

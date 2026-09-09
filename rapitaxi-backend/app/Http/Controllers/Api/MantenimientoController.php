@@ -58,7 +58,7 @@ class MantenimientoController extends Controller
 
         if ($request->hasFile('comprobante')) {
             $datos['comprobante_ruta'] = $request->file('comprobante')
-                ->store('comprobantes_mantenimiento', 'public');
+                ->store('comprobantes_mantenimiento', 's3');
         }
 
         $mantenimiento = Mantenimiento::create($datos);
@@ -120,12 +120,12 @@ class MantenimientoController extends Controller
         }
 
         if ($request->hasFile('comprobante')) {
-            if ($mantenimiento->comprobante_ruta && Storage::disk('public')->exists($mantenimiento->comprobante_ruta)) {
-                Storage::disk('public')->delete($mantenimiento->comprobante_ruta);
+            if ($mantenimiento->comprobante_ruta) {
+                Storage::disk('s3')->delete($mantenimiento->comprobante_ruta);
             }
 
             $mantenimiento->comprobante_ruta = $request->file('comprobante')
-                ->store('comprobantes_mantenimiento', 'public');
+                ->store('comprobantes_mantenimiento', 's3');
         }
 
         $mantenimiento->save();
@@ -149,12 +149,34 @@ class MantenimientoController extends Controller
             return response()->json(['message' => 'No se puede eliminar un mantenimiento completado.'], 422);
         }
 
-        if ($mantenimiento->comprobante_ruta && Storage::disk('public')->exists($mantenimiento->comprobante_ruta)) {
-            Storage::disk('public')->delete($mantenimiento->comprobante_ruta);
+        if ($mantenimiento->comprobante_ruta) {
+            Storage::disk('s3')->delete($mantenimiento->comprobante_ruta);
         }
 
         $mantenimiento->delete();
 
         return response()->json(['message' => 'Mantenimiento eliminado.'], 200);
+    }
+
+    // Genera un enlace temporal (5 min) para ver/descargar el comprobante
+    // directo desde R2. El archivo no pasa por este servidor.
+    public function download($id)
+    {
+        $mantenimiento = Mantenimiento::find($id);
+
+        if (!$mantenimiento || !$mantenimiento->comprobante_ruta) {
+            return response()->json(['message' => 'Comprobante no encontrado.'], 404);
+        }
+
+        $extension = strtolower(pathinfo($mantenimiento->comprobante_ruta, PATHINFO_EXTENSION));
+        $fileName = 'comprobante_' . $mantenimiento->id . ($extension !== '' ? '.' . $extension : '');
+
+        $url = Storage::disk('s3')->temporaryUrl(
+            $mantenimiento->comprobante_ruta,
+            now()->addMinutes(5),
+            ['ResponseContentDisposition' => 'inline; filename="' . $fileName . '"']
+        );
+
+        return response()->json(['url' => $url], 200);
     }
 }
