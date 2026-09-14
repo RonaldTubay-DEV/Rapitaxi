@@ -107,7 +107,7 @@ class SocioController extends Controller
         ], 200);
     }
 
-    // 5. Eliminar un socio del sistema
+    // 5. Eliminar un socio del sistema (borrado suave: se puede reactivar despues)
     public function destroy($id)
     {
         $socio = Socio::find($id);
@@ -119,5 +119,47 @@ class SocioController extends Controller
         $socio->delete();
 
         return response()->json(['message' => 'Socio eliminado con éxito.'], 200);
+    }
+
+    // 6. Listar socios dados de baja, para poder reactivarlos
+    public function eliminados(Request $request)
+    {
+        $query = Socio::onlyTrashed()->orderBy('deleted_at', 'desc');
+
+        if ($request->filled('search')) {
+            $search = '%' . mb_strtolower($request->search) . '%';
+            $query->where(function ($q) use ($search) {
+                $q->whereRaw('LOWER(nombre) LIKE ?', [$search])
+                  ->orWhereRaw('LOWER(cedula) LIKE ?', [$search]);
+            });
+        }
+
+        return response()->json($query->get(), 200);
+    }
+
+    // 7. Reactivar un socio dado de baja, con todo su historial intacto
+    public function restaurar($id)
+    {
+        $socio = Socio::onlyTrashed()->find($id);
+
+        if (!$socio) {
+            return response()->json(['message' => 'Socio eliminado no encontrado.'], 404);
+        }
+
+        // Si en el tiempo que estuvo dado de baja alguien mas tomo su cedula,
+        // no lo dejamos reactivar hasta resolver ese choque.
+        if ($socio->cedula && Socio::where('cedula', $socio->cedula)->whereNull('deleted_at')->exists()) {
+            return response()->json([
+                'message' => 'No se puede reactivar: ya existe otro socio activo con esta misma cedula.',
+            ], 422);
+        }
+
+        $socio->restore();
+        $socio->load(['vehiculos', 'user', 'aportaciones']);
+
+        return response()->json([
+            'message' => 'Socio reactivado con éxito.',
+            'socio' => $socio,
+        ], 200);
     }
 }

@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens; // <-- IMPORTACIÓN DE SANCTUM AGREGADA
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable; // <-- HABILIDAD DE TOKENS Y ROLES AGREGADA
+    use HasApiTokens, HasFactory, HasRoles, LogsActivity, Notifiable; // <-- HABILIDAD DE TOKENS Y ROLES AGREGADA
 
     /**
      * The attributes that are mass assignable.
@@ -54,5 +56,15 @@ class User extends Authenticatable
     public function socio()
     {
         return $this->hasOne(Socio::class);
+    }
+
+    // Nunca incluir 'password': no debe quedar ni el hash en el historial.
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('usuarios');
     }
 }

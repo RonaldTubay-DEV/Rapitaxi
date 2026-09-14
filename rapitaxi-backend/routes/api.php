@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AportacionController;
+use App\Http\Controllers\Api\AuditoriaController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ConfiguracionMantenimientoController;
 use App\Http\Controllers\Api\DashboardController;
@@ -31,6 +32,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Todo lo demas es el panel administrativo: nadie con rol "socio" puede
     // entrar aqui, ni desde la UI ni llamando a la API directamente.
     Route::middleware('role:admin|operador')->group(function () {
+        // Deben ir antes del apiResource: si no, "eliminados" se interpreta
+        // como {socio} y termina en el metodo show().
+        Route::get('socios/eliminados', [SocioController::class, 'eliminados']);
+        Route::put('socios/{id}/restaurar', [SocioController::class, 'restaurar']);
         Route::apiResource('socios', SocioController::class);
         Route::apiResource('aportaciones', AportacionController::class)->only(['index', 'store', 'destroy']);
         Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
@@ -58,5 +63,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
         Route::get('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'index']);
         Route::put('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'update']);
+
+        Route::get('auditoria', [AuditoriaController::class, 'index']);
     });
 });

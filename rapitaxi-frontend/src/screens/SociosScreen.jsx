@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, KeyRound, UserCheck, UserX, UserSearch } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, KeyRound, UserCheck, UserX, UserSearch, RotateCcw, Archive } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
@@ -17,6 +17,8 @@ const SociosScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [verEliminados, setVerEliminados] = useState(false);
+  const [isRestaurando, setIsRestaurando] = useState(null);
 
   // Modal y Formulario
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -51,14 +53,13 @@ const SociosScreen = () => {
   // ==========================================
   // FUNCIONES DE API
   // ==========================================
-  const fetchSocios = async (query = '') => {
+  const fetchSocios = async (query = '', eliminados = verEliminados) => {
     setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('auth_token');
-      const url = query 
-        ? `${API_URL}/socios?search=${encodeURIComponent(query)}` 
-        : `${API_URL}/socios`;
+      const base = eliminados ? `${API_URL}/socios/eliminados` : `${API_URL}/socios`;
+      const url = query ? `${base}?search=${encodeURIComponent(query)}` : base;
 
       const response = await fetch(url, {
         method: 'GET',
@@ -82,10 +83,24 @@ const SociosScreen = () => {
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchSocios(searchTerm);
+      fetchSocios(searchTerm, verEliminados);
     }, 500);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchTerm, verEliminados]);
+
+  const handleRestaurar = async (socio) => {
+    if (!(await confirmDialog(`¿Reactivar a ${socio.nombre} con todo su historial?`))) return;
+    setIsRestaurando(socio.id);
+    try {
+      await apiClient.put(`/socios/${socio.id}/restaurar`);
+      setSocios((prev) => prev.filter((s) => s.id !== socio.id));
+      showSuccessToast('Socio reactivado exitosamente.');
+    } catch (err) {
+      showErrorToast(err instanceof ApiError ? err.message : 'No se pudo reactivar el socio.');
+    } finally {
+      setIsRestaurando(null);
+    }
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -311,11 +326,27 @@ const SociosScreen = () => {
               <UserSearch className="w-5 h-5 mr-2" /> Crear Cuenta de Socio
             </button>
           )}
-          <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
-            <Plus className="w-5 h-5 mr-2" /> Nuevo Socio
+          <button
+            onClick={() => setVerEliminados((v) => !v)}
+            className={`w-full sm:w-auto px-4 py-2 rounded-xl font-bold flex items-center justify-center transition-colors shadow-sm border ${
+              verEliminados ? 'bg-slate-900 text-yellow-400 border-slate-900' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Archive className="w-5 h-5 mr-2" /> {verEliminados ? 'Ver Activos' : 'Ver Eliminados'}
           </button>
+          {!verEliminados && (
+            <button onClick={openCreateModal} className="w-full sm:w-auto bg-slate-900 text-yellow-400 px-4 py-2 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md">
+              <Plus className="w-5 h-5 mr-2" /> Nuevo Socio
+            </button>
+          )}
         </div>
       </div>
+
+      {verEliminados && (
+        <div className="mb-6 bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg text-sm text-amber-800 font-medium">
+          Mostrando socios dados de baja. Su historial de aportaciones y vehículos se conserva intacto y se recupera al reactivarlos.
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg flex items-start">
@@ -385,25 +416,39 @@ const SociosScreen = () => {
                       )}
                     </td>
                     <td className="p-4 flex justify-center space-x-2">
-                      <button onClick={() => openEditModal(socio)} title="Editar" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                      {puedeGestionarCuentas && (
-                        socio.user_id ? (
-                          <button
-                            onClick={() => handleToggleCuenta(socio)}
-                            title={socio.cuenta_activa ? 'Dar de baja la cuenta' : 'Reactivar la cuenta'}
-                            className={`p-2 rounded-lg transition-colors ${
-                              socio.cuenta_activa ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'
-                            }`}
-                          >
-                            {socio.cuenta_activa ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                          </button>
-                        ) : (
-                          <button onClick={() => openCuentaModal(socio)} title="Crear cuenta de acceso" className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
-                            <KeyRound className="w-4 h-4" />
-                          </button>
-                        )
+                      {verEliminados ? (
+                        <button
+                          onClick={() => handleRestaurar(socio)}
+                          disabled={isRestaurando === socio.id}
+                          title="Reactivar socio"
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg flex items-center text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50 transition-colors"
+                        >
+                          {isRestaurando === socio.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RotateCcw className="w-4 h-4 mr-1" />}
+                          Reactivar
+                        </button>
+                      ) : (
+                        <>
+                          <button onClick={() => openEditModal(socio)} title="Editar" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                          {puedeGestionarCuentas && (
+                            socio.user_id ? (
+                              <button
+                                onClick={() => handleToggleCuenta(socio)}
+                                title={socio.cuenta_activa ? 'Dar de baja la cuenta' : 'Reactivar la cuenta'}
+                                className={`p-2 rounded-lg transition-colors ${
+                                  socio.cuenta_activa ? 'text-slate-400 hover:text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'
+                                }`}
+                              >
+                                {socio.cuenta_activa ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                              </button>
+                            ) : (
+                              <button onClick={() => openCuentaModal(socio)} title="Crear cuenta de acceso" className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                                <KeyRound className="w-4 h-4" />
+                              </button>
+                            )
+                          )}
+                          <button onClick={() => handleDelete(socio.id)} title="Eliminar" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        </>
                       )}
-                      <button onClick={() => handleDelete(socio.id)} title="Eliminar" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </td>
                   </tr>
                 ))

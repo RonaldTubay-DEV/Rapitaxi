@@ -19,6 +19,7 @@ import ActasScreen from './screens/ActasScreen';
 import LibrosContablesScreen from './screens/LibrosContablesScreen';
 import ConfiguracionScreen from './screens/ConfiguracionScreen';
 import UsuariosScreen from './screens/UsuariosScreen';
+import AuditoriaScreen from './screens/AuditoriaScreen';
 
 // Importación de la Plantilla Base
 import MainLayout from './components/MainLayout';
@@ -54,6 +55,7 @@ function App() {
               <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
                 <Route path="/usuarios" element={<UsuariosScreen />} />
                 <Route path="/configuracion" element={<ConfiguracionScreen />} />
+                <Route path="/auditoria" element={<AuditoriaScreen />} />
               </Route>
             </Route>
           </Route>

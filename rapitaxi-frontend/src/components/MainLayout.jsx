@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import {
   CarFront, LayoutDashboard, Users, Wrench, FolderOpen,
-  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings, X, UserPlus, ChevronDown
+  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings, X, UserPlus, ChevronDown, History
 } from 'lucide-react';
 
 // IMPORTAMOS TU NUEVO COMPONENTE DE NOTIFICACIONES
@@ -43,6 +43,7 @@ const MENU_STRUCTURE = [
     items: [
       { icon: UserPlus, label: 'Usuarios', path: '/usuarios' },
       { icon: Settings, label: 'Configuración', path: '/configuracion' },
+      { icon: History, label: 'Auditoría', path: '/auditoria' },
     ],
   },
 ];
