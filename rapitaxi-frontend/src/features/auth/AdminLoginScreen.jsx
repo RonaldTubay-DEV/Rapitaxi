@@ -58,7 +58,7 @@ const AdminLoginScreen = () => {
     setIsLoading(true);
 
     try {
-      await login(formData);
+      const loggedInUser = await login(formData);
 
       if (rememberMe) {
         localStorage.setItem(REMEMBER_EMAIL_KEY, formData.email.trim());
@@ -67,7 +67,7 @@ const AdminLoginScreen = () => {
       }
 
       showSuccessToast('Sesion iniciada exitosamente.');
-      navigate('/panel');
+      navigate(loggedInUser.role === 'socio' ? '/portal/perfil' : '/panel');
     } catch (err) {
       if (err instanceof ApiError && err.data?.errors) {
         const backendErrors = Object.fromEntries(

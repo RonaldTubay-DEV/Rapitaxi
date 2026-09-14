@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar } from 'lucide-react';
+import { Plus, Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar, Eye, Check, Ban } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
 import { normalizeDecimal, onlyDigits } from '../utils/inputFormatters';
+import { apiClient, ApiError } from '../lib/apiClient';
+
+const ESTADO_ESTILO = {
+  Pendiente: 'bg-amber-100 text-amber-700',
+  Aprobado: 'bg-green-100 text-green-700',
+  Rechazado: 'bg-red-100 text-red-700',
+};
 
 const AportacionesScreen = () => {
   // ==========================================
@@ -14,12 +21,18 @@ const AportacionesScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('Todos');
 
   // Modal y Formulario
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  
+
+  // Revision de comprobantes subidos por el socio
+  const [aportacionARechazar, setAportacionARechazar] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
+  const [isRevisando, setIsRevisando] = useState(null);
+
   const fechaHoy = new Date().toISOString().split('T')[0];
   const mesActual = new Date().getMonth() + 1;
   const anioActual = new Date().getFullYear();
@@ -127,27 +140,91 @@ const AportacionesScreen = () => {
     } catch (err) { showErrorToast('Error al eliminar.'); }
   };
 
+  // El comprobante lo sirve R2 directo via una URL firmada (5 min), no pasa
+  // por este servidor. Se abre en pestaña nueva con el visor del navegador.
+  const verComprobante = async (id) => {
+    try {
+      const data = await apiClient.get(`/aportaciones/${id}/comprobante`);
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+    } catch {
+      showErrorToast('No se pudo abrir el comprobante.');
+    }
+  };
+
+  const handleAprobar = async (aportacion) => {
+    if (!(await confirmDialog(`¿Aprobar el pago de ${aportacion.socio?.nombre} por $${aportacion.monto}?`, { danger: false }))) return;
+    setIsRevisando(aportacion.id);
+    try {
+      const data = await apiClient.put(`/aportaciones/${aportacion.id}/aprobar`);
+      setAportaciones(aportaciones.map((a) => (a.id === aportacion.id ? data.aportacion : a)));
+      showSuccessToast('Comprobante aprobado exitosamente.');
+    } catch (err) {
+      showErrorToast(err instanceof ApiError ? err.message : 'No se pudo aprobar.');
+    } finally {
+      setIsRevisando(null);
+    }
+  };
+
+  const openRechazoModal = (aportacion) => {
+    setAportacionARechazar(aportacion);
+    setMotivoRechazo('');
+  };
+
+  const handleConfirmarRechazo = async (e) => {
+    e.preventDefault();
+    setIsRevisando(aportacionARechazar.id);
+    try {
+      const data = await apiClient.put(`/aportaciones/${aportacionARechazar.id}/rechazar`, { motivo_rechazo: motivoRechazo });
+      setAportaciones(aportaciones.map((a) => (a.id === aportacionARechazar.id ? data.aportacion : a)));
+      showSuccessToast('Comprobante rechazado.');
+      setAportacionARechazar(null);
+    } catch (err) {
+      showErrorToast(err instanceof ApiError ? err.message : 'No se pudo rechazar.');
+    } finally {
+      setIsRevisando(null);
+    }
+  };
+
   const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
   const aportacionesFiltradas = aportaciones.filter(a => {
+    if (filtroEstado !== 'Todos' && a.estado !== filtroEstado) return false;
     if (!searchTerm) return true;
     const term = searchTerm.toLowerCase();
     return (a.socio?.nombre ?? '').toLowerCase().includes(term);
   });
 
+  const pendientesCount = aportaciones.filter((a) => a.estado === 'Pendiente').length;
+
   return (
     <div className="p-4 sm:p-6 lg:p-10 relative">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Control de Aportaciones</h2>
-          <p className="text-slate-500 mt-1">Registro de pagos mensuales y cuotas de la flota.</p>
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 flex items-center">
+            Control de Aportaciones
+            {pendientesCount > 0 && (
+              <span className="ml-3 px-2.5 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">
+                {pendientesCount} pendiente{pendientesCount !== 1 ? 's' : ''} de revisar
+              </span>
+            )}
+          </h2>
+          <p className="text-slate-500 mt-1">Registro de pagos mensuales y comprobantes subidos por los socios.</p>
         </div>
         <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+          <select
+            value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
+            className="w-full sm:w-auto px-4 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-yellow-400 outline-none text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
+          >
+            <option value="Todos">Todos los estados</option>
+            <option value="Pendiente">🟡 Pendientes</option>
+            <option value="Aprobado">🟢 Aprobados</option>
+            <option value="Rechazado">🔴 Rechazados</option>
+          </select>
           <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-            <input 
+            <input
               type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar socio..." 
+              placeholder="Buscar socio..."
               className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
           </div>
@@ -174,22 +251,49 @@ const AportacionesScreen = () => {
                 <th className="p-4">Periodo</th>
                 <th className="p-4">Fecha</th>
                 <th className="p-4">Monto</th>
+                <th className="p-4">Estado</th>
                 <th className="p-4 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
-              {isLoading ? <tr><td colSpan="6" className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-yellow-500 w-8 h-8" /></td></tr> : 
+              {isLoading ? <tr><td colSpan="7" className="p-8 text-center"><Loader2 className="animate-spin mx-auto text-yellow-500 w-8 h-8" /></td></tr> :
                 aportacionesFiltradas.length === 0 ? (
-                  <tr><td colSpan="6" className="p-8 text-center text-slate-500">No hay registros de aportaciones.</td></tr>
+                  <tr><td colSpan="7" className="p-8 text-center text-slate-500">No hay registros de aportaciones.</td></tr>
                 ) : (
                 aportacionesFiltradas.map((a) => (
-                  <tr key={a.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={a.id} className={`hover:bg-slate-50 transition-colors ${a.estado === 'Pendiente' ? 'bg-amber-50/60' : ''}`}>
                     <td className="p-4 font-bold text-slate-500">#{a.id.toString().padStart(4, '0')}</td>
                     <td className="p-4 font-semibold text-slate-900">{a.socio?.nombre}</td>
                     <td className="p-4"><span className="px-3 py-1 bg-blue-50 text-blue-700 font-semibold rounded-lg">{nombresMeses[a.mes_pagado - 1]} {a.anio_pagado}</span></td>
                     <td className="p-4 flex items-center mt-2 text-slate-600"><Calendar className="w-4 h-4 mr-2" /> {a.fecha_pago}</td>
                     <td className="p-4 font-bold text-green-600">${parseFloat(a.monto).toFixed(2)}</td>
-                    <td className="p-4 text-center"><button onClick={() => handleDelete(a.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button></td>
+                    <td className="p-4">
+                      <span className={`px-3 py-1 text-xs font-bold rounded-full ${ESTADO_ESTILO[a.estado] || 'bg-slate-100 text-slate-600'}`}>
+                        {a.estado}
+                      </span>
+                      {a.estado === 'Rechazado' && a.motivo_rechazo && (
+                        <p className="text-[11px] text-red-500 mt-1 max-w-[160px]">{a.motivo_rechazo}</p>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {a.comprobante_ruta && (
+                          <button onClick={() => verComprobante(a.id)} title="Ver comprobante" className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Eye className="w-4 h-4" /></button>
+                        )}
+                        {a.estado === 'Pendiente' && (
+                          <>
+                            <button
+                              onClick={() => handleAprobar(a)} disabled={isRevisando === a.id} title="Aprobar"
+                              className="p-2 text-slate-400 hover:text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-50"
+                            >
+                              {isRevisando === a.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            </button>
+                            <button onClick={() => openRechazoModal(a)} title="Rechazar" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Ban className="w-4 h-4" /></button>
+                          </>
+                        )}
+                        <button onClick={() => handleDelete(a.id)} title="Anular" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
                   </tr>
                 ))
               )}
@@ -275,6 +379,40 @@ const AportacionesScreen = () => {
                   {isSubmitting ? <><Loader2 className="w-6 h-6 mr-2 animate-spin" /> Procesando pago...</> : <><Save className="w-6 h-6 mr-2" /> Guardar Recibo</>}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RECHAZO: pide el motivo antes de confirmar */}
+      {aportacionARechazar && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Rechazar Comprobante</h3>
+                <p className="text-slate-500 mt-1 text-sm">Para {aportacionARechazar.socio?.nombre}. El socio vera este motivo y podra volver a subir uno nuevo.</p>
+              </div>
+              <button onClick={() => setAportacionARechazar(null)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-6 h-6" /></button>
+            </div>
+            <form onSubmit={handleConfirmarRechazo} className="p-4 pt-4 sm:p-6 sm:pt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Motivo del rechazo</label>
+                <textarea
+                  value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)}
+                  required maxLength="300" rows="3" autoFocus
+                  placeholder="Ej. El comprobante no corresponde al mes indicado."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 resize-none"
+                />
+              </div>
+              <button
+                type="submit" disabled={isRevisando === aportacionARechazar.id}
+                className={`w-full py-3 rounded-xl font-bold flex items-center justify-center transition-colors shadow-md ${
+                  isRevisando === aportacionARechazar.id ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
+              >
+                {isRevisando === aportacionARechazar.id ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Rechazando...</> : <><Ban className="w-5 h-5 mr-2" /> Confirmar Rechazo</>}
+              </button>
             </form>
           </div>
         </div>

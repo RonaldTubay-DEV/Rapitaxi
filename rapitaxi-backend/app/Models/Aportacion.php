@@ -28,12 +28,30 @@ class Aportacion extends Model
         'monto',
         'fecha_pago',
         'metodo_pago',
+        'estado',
+        'comprobante_ruta',
+        'motivo_rechazo',
+        'revisado_por',
+        'revisado_en',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'revisado_en' => 'datetime',
+        ];
+    }
 
     // Relación inversa: Un pago pertenece a un socio
     public function socio()
     {
         return $this->belongsTo(Socio::class);
+    }
+
+    // Quien (admin/operador) aprobo o rechazo el comprobante subido por el socio
+    public function revisadoPor()
+    {
+        return $this->belongsTo(User::class, 'revisado_por');
     }
 
     public function getActivitylogOptions(): LogOptions

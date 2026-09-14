@@ -20,9 +20,12 @@ import LibrosContablesScreen from './screens/LibrosContablesScreen';
 import ConfiguracionScreen from './screens/ConfiguracionScreen';
 import UsuariosScreen from './screens/UsuariosScreen';
 import AuditoriaScreen from './screens/AuditoriaScreen';
+import MiPerfilScreen from './screens/portal/MiPerfilScreen';
+import MisAportacionesScreen from './screens/portal/MisAportacionesScreen';
 
 // Importación de la Plantilla Base
 import MainLayout from './components/MainLayout';
+import SocioPortalLayout from './components/SocioPortalLayout';
 import ToastHost from './components/ToastHost';
 import ConfirmHost from './components/ConfirmHost';
 
@@ -57,6 +60,15 @@ function App() {
                 <Route path="/configuracion" element={<ConfiguracionScreen />} />
                 <Route path="/auditoria" element={<AuditoriaScreen />} />
               </Route>
+            </Route>
+          </Route>
+
+          {/* Portal del socio: acceso propio, no comparte el panel de staff */}
+          <Route element={<ProtectedRoute allowedRoles={['socio']} />}>
+            <Route element={<SocioPortalLayout />}>
+              <Route path="/portal" element={<Navigate to="/portal/perfil" replace />} />
+              <Route path="/portal/perfil" element={<MiPerfilScreen />} />
+              <Route path="/portal/aportaciones" element={<MisAportacionesScreen />} />
             </Route>
           </Route>
         </Routes>

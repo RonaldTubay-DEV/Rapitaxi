@@ -270,31 +270,27 @@ const SociosScreen = () => {
 
   const closeBuscador = () => setIsBuscadorOpen(false);
 
+  // Al abrir el buscador se trae la lista completa de una vez (no hace falta
+  // esperar a que se escriba nada); despues, digitar solo filtra en el
+  // navegador, sin volver a pedirle nada al servidor por cada letra.
   useEffect(() => {
-    if (!isBuscadorOpen) return undefined;
-
-    const query = buscadorQuery.trim();
-    if (query === '') {
-      setBuscadorResultados([]);
-      setBuscadorHaBuscado(false);
-      return undefined;
-    }
+    if (!isBuscadorOpen) return;
 
     setBuscadorLoading(true);
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        const data = await apiClient.get(`/socios?search=${encodeURIComponent(query)}`);
-        setBuscadorResultados(data);
-      } catch {
-        setBuscadorResultados([]);
-      } finally {
+    apiClient.get('/socios')
+      .then((data) => setBuscadorResultados(data))
+      .catch(() => setBuscadorResultados([]))
+      .finally(() => {
         setBuscadorHaBuscado(true);
         setBuscadorLoading(false);
-      }
-    }, 500);
+      });
+  }, [isBuscadorOpen]);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [buscadorQuery, isBuscadorOpen]);
+  const buscadorMostrados = buscadorResultados.filter((socio) => {
+    const query = buscadorQuery.trim().toLowerCase();
+    if (query === '') return true;
+    return (socio.nombre || '').toLowerCase().includes(query) || (socio.cedula || '').includes(query);
+  });
 
   const handleSeleccionarDeBuscador = (socio) => {
     if (socio.user_id) return; // ya tiene cuenta, no hacemos nada al hacer click
@@ -563,16 +559,16 @@ const SociosScreen = () => {
 
               <div className="max-h-72 overflow-y-auto space-y-2">
                 {buscadorLoading ? (
-                  <div className="text-center text-slate-500 py-6"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-yellow-500" />Buscando...</div>
-                ) : buscadorQuery.trim() === '' ? (
-                  <p className="text-center text-slate-400 text-sm py-6">Escribe para buscar entre los socios registrados.</p>
-                ) : buscadorHaBuscado && buscadorResultados.length === 0 ? (
+                  <div className="text-center text-slate-500 py-6"><Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-yellow-500" />Cargando socios...</div>
+                ) : buscadorHaBuscado && buscadorMostrados.length === 0 ? (
                   <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-r-lg flex items-start">
                     <AlertCircle className="w-5 h-5 text-red-500 mr-3 mt-0.5 flex-shrink-0" />
-                    <p className="text-sm text-red-700 font-medium">Este socio no está registrado en el sistema. Regístralo primero con "Nuevo Socio".</p>
+                    <p className="text-sm text-red-700 font-medium">
+                      {buscadorQuery.trim() === '' ? 'No hay socios registrados todavía.' : 'Este socio no está registrado en el sistema. Regístralo primero con "Nuevo Socio".'}
+                    </p>
                   </div>
                 ) : (
-                  buscadorResultados.map((socio) => (
+                  buscadorMostrados.map((socio) => (
                     <button
                       key={socio.id}
                       type="button"

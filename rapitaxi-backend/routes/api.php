@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ReporteController;
 use App\Http\Controllers\Api\RevisionController;
 use App\Http\Controllers\Api\SocioController;
 use App\Http\Controllers\Api\SocioCuentaController;
+use App\Http\Controllers\Api\SocioPortalController;
 use App\Http\Controllers\Api\UsuarioController;
 use App\Http\Controllers\Api\VehiculoController;
 use Illuminate\Http\Request;
@@ -38,6 +39,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('socios/{id}/restaurar', [SocioController::class, 'restaurar']);
         Route::apiResource('socios', SocioController::class);
         Route::apiResource('aportaciones', AportacionController::class)->only(['index', 'store', 'destroy']);
+        Route::put('aportaciones/{id}/aprobar', [AportacionController::class, 'aprobar']);
+        Route::put('aportaciones/{id}/rechazar', [AportacionController::class, 'rechazar']);
+        Route::get('aportaciones/{id}/comprobante', [AportacionController::class, 'comprobante']);
         Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
         Route::get('expedientes/{id}/download', [ExpedienteController::class, 'download']);
         Route::apiResource('vehiculos', VehiculoController::class);
@@ -65,5 +69,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('configuraciones-mantenimiento', [ConfiguracionMantenimientoController::class, 'update']);
 
         Route::get('auditoria', [AuditoriaController::class, 'index']);
+    });
+
+    // Portal del socio: solo puede ver/editar su propia ficha y su propio
+    // historial de aportaciones, nada del resto del sistema.
+    Route::middleware('role:socio')->group(function () {
+        Route::get('mi-perfil', [SocioPortalController::class, 'perfil']);
+        Route::put('mi-perfil', [SocioPortalController::class, 'actualizarPerfil']);
+        Route::get('mis-aportaciones', [SocioPortalController::class, 'misAportaciones']);
+        Route::post('mis-aportaciones', [SocioPortalController::class, 'subirComprobante']);
     });
 });

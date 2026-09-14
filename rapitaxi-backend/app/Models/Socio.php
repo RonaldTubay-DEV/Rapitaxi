@@ -64,14 +64,17 @@ class Socio extends Model
 
         // Si 'aportaciones' ya viene precargada (eager load) filtramos en PHP y no
         // disparamos una consulta nueva por cada socio (evita N+1 al listar socios).
+        // Solo cuenta una aportacion 'Aprobado': un comprobante que el socio
+        // subio y aun no se revisa no debe marcarlo como "Al dia" todavia.
         if ($this->relationLoaded('aportaciones')) {
             $pagoDelMes = $this->aportaciones->first(
-                fn ($a) => $a->mes_pagado == $mesActual && $a->anio_pagado == $anioActual
+                fn ($a) => $a->mes_pagado == $mesActual && $a->anio_pagado == $anioActual && $a->estado === 'Aprobado'
             );
         } else {
             $pagoDelMes = $this->aportaciones()
                 ->where('mes_pagado', $mesActual)
                 ->where('anio_pagado', $anioActual)
+                ->where('estado', 'Aprobado')
                 ->first();
         }
 
