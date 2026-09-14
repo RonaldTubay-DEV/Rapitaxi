@@ -37,8 +37,9 @@ class LibroContableController extends Controller
 
     public function destroy($id)
     {
+        // Borrado suave: el PDF en R2 se conserva para auditoria, solo se
+        // oculta el registro del listado normal.
         $libro = LibroContable::findOrFail($id);
-        Storage::disk('s3')->delete($libro->archivo_ruta);
         $libro->delete();
         return response()->json(['message' => 'Eliminado'], 200);
     }

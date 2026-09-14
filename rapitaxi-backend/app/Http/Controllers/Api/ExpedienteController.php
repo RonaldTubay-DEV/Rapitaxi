@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Expediente;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class ExpedienteController extends Controller
 {
@@ -28,7 +29,7 @@ class ExpedienteController extends Controller
     {
         // Validamos que venga un archivo real (máximo 5MB, formatos comunes)
         $request->validate([
-            'socio_id'         => 'required|exists:socios,id',
+            'socio_id'         => ['required', Rule::exists('socios', 'id')->whereNull('deleted_at')],
             'nombre_documento' => 'required|string|max:80',
             'archivo'          => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', 
         ]);

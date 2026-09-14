@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Notificacion;
 use App\Models\Socio;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class SocioController extends Controller
 {
@@ -41,7 +42,7 @@ class SocioController extends Controller
         $request->validate([
             
             'nombre'          => 'required|string|max:80',
-            'cedula'          => 'nullable|digits:10|unique:socios,cedula', 
+            'cedula'          => ['nullable', 'digits:10', Rule::unique('socios', 'cedula')->whereNull('deleted_at')],
             'telefono'        => 'nullable|digits:10',                      
             'correo'          => 'nullable|email|max:100',
             'direccion'       => 'nullable|string|max:150',
@@ -89,7 +90,7 @@ class SocioController extends Controller
         $request->validate([
            
             'nombre'          => 'required|string|max:80',
-            'cedula'          => 'nullable|digits:10|unique:socios,cedula,' . $id, 
+            'cedula'          => ['nullable', 'digits:10', Rule::unique('socios', 'cedula')->whereNull('deleted_at')->ignore($id)],
             'telefono'        => 'nullable|digits:10',                             
             'correo'          => 'nullable|email|max:100',
             'direccion'       => 'nullable|string|max:150',

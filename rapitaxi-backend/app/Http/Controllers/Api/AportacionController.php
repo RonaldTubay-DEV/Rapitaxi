@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Aportacion;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AportacionController extends Controller
 {
@@ -20,7 +21,7 @@ class AportacionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'socio_id' => 'required|exists:socios,id',
+            'socio_id' => ['required', Rule::exists('socios', 'id')->whereNull('deleted_at')],
             'mes_pagado' => 'required|integer|min:1|max:12',
             'anio_pagado' => 'required|integer|min:2000|max:2100',
             'monto' => 'required|numeric|min:0|max:99999.99',

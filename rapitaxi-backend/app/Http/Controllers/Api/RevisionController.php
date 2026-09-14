@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Revision;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class RevisionController extends Controller
 {
@@ -18,7 +19,7 @@ class RevisionController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'vehiculo_id'    => 'required|exists:vehiculos,id',
+            'vehiculo_id'    => ['required', Rule::exists('vehiculos', 'id')->whereNull('deleted_at')],
             'fecha_revision' => 'required|date',
             'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
@@ -51,7 +52,7 @@ class RevisionController extends Controller
         }
 
         $request->validate([
-            'vehiculo_id'    => 'required|exists:vehiculos,id',
+            'vehiculo_id'    => ['required', Rule::exists('vehiculos', 'id')->whereNull('deleted_at')],
             'fecha_revision' => 'required|date',
             'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',

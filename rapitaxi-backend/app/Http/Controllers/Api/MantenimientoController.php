@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Mantenimiento;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class MantenimientoController extends Controller
 {
@@ -21,7 +22,7 @@ class MantenimientoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'vehiculo_id'              => 'required|exists:vehiculos,id',
+            'vehiculo_id'              => ['required', Rule::exists('vehiculos', 'id')->whereNull('deleted_at')],
             'fecha_mantenimiento'      => 'required|date',
             'tipo_mantenimiento'       => 'required|string|max:80',
             'mecanico'                 => 'nullable|string|max:80',
@@ -149,10 +150,8 @@ class MantenimientoController extends Controller
             return response()->json(['message' => 'No se puede eliminar un mantenimiento completado.'], 422);
         }
 
-        if ($mantenimiento->comprobante_ruta) {
-            Storage::disk('s3')->delete($mantenimiento->comprobante_ruta);
-        }
-
+        // Borrado suave: el registro (y su comprobante en R2) se conservan
+        // para auditoria, solo se oculta del listado normal.
         $mantenimiento->delete();
 
         return response()->json(['message' => 'Mantenimiento eliminado.'], 200);
