@@ -213,8 +213,12 @@ const MainLayout = () => {
           </div>
         </header>
 
-        {/* CONTENIDO DINÁMICO (LAS PANTALLAS) */}
-        <div className="flex-1 overflow-y-auto">
+        {/* CONTENIDO DINÁMICO (LAS PANTALLAS). "panel-scroll-area" es el
+            gancho que usan las pantallas imprimibles (ver ActasScreen) para
+            anular este overflow/altura al imprimir; si no, el navegador
+            recorta todo lo que esta fuera de esta "ventana" con scroll y la
+            hoja impresa sale en blanco. */}
+        <div className="flex-1 overflow-y-auto panel-scroll-area">
           <div key={location.pathname} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <Outlet />
           </div>

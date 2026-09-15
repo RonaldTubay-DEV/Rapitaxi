@@ -25,7 +25,16 @@ const SociosScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
   const [editingId, setEditingId] = useState(null);
-  
+  // Se guarda el estado con el que abrio el modal para detectar si el
+  // cambio actual es una transicion Activo -> Inactivo (eso exige motivo).
+  const [editingEstadoOriginal, setEditingEstadoOriginal] = useState(null);
+  const [motivoBaja, setMotivoBaja] = useState('');
+
+  // Modal de confirmacion para eliminar (pide motivo obligatorio)
+  const [socioAEliminar, setSocioAEliminar] = useState(null);
+  const [motivoEliminar, setMotivoEliminar] = useState('');
+  const [isEliminando, setIsEliminando] = useState(false);
+
   // Estado inicial limpio (sin datos de vehículo)
   const [formData, setFormData] = useState({
     nombre: '',
@@ -116,11 +125,13 @@ const SociosScreen = () => {
   };
 
   const openCreateModal = () => {
-    setFormData({ 
-      nombre: '', cedula: '', telefono: '', correo: '', 
-      direccion: '', estado: 'Activo', observaciones: '' 
+    setFormData({
+      nombre: '', cedula: '', telefono: '', correo: '',
+      direccion: '', estado: 'Activo', observaciones: ''
     });
     setEditingId(null);
+    setEditingEstadoOriginal(null);
+    setMotivoBaja('');
     setFormError('');
     setIsModalOpen(true);
   };
@@ -136,14 +147,26 @@ const SociosScreen = () => {
       observaciones: socio.observaciones || ''
     });
     setEditingId(socio.id);
+    setEditingEstadoOriginal(socio.estado);
+    setMotivoBaja('');
     setFormError('');
     setIsModalOpen(true);
   };
+
+  // Solo al editar (no al crear) y solo cuando de verdad se esta pasando
+  // de Activo a Inactivo en este mismo guardado.
+  const requiereMotivoBaja = editingId !== null && editingEstadoOriginal === 'Activo' && formData.estado === 'Inactivo';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setFormError('');
+
+    if (requiereMotivoBaja && motivoBaja.trim() === '') {
+      setFormError('Debes indicar el motivo para dar de baja al socio.');
+      setIsSubmitting(false);
+      return;
+    }
 
     const dataToSend = {
       ...formData,
@@ -152,6 +175,7 @@ const SociosScreen = () => {
       correo: formData.correo.trim() === '' ? null : formData.correo,
       direccion: formData.direccion.trim() === '' ? null : formData.direccion,
       observaciones: formData.observaciones.trim() === '' ? null : formData.observaciones,
+      ...(requiereMotivoBaja ? { motivo_baja: motivoBaja } : {}),
     };
 
     const isEditing = editingId !== null;
@@ -196,20 +220,23 @@ const SociosScreen = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!(await confirmDialog('¿Estás seguro de que deseas eliminar este registro?'))) return;
+  const openEliminarModal = (socio) => {
+    setSocioAEliminar(socio);
+    setMotivoEliminar('');
+  };
+
+  const handleConfirmarEliminar = async (e) => {
+    e.preventDefault();
+    setIsEliminando(true);
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/socios/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        setSocios(socios.filter(s => s.id !== id));
-        showSuccessToast('Socio eliminado exitosamente.');
-      }
+      await apiClient.delete(`/socios/${socioAEliminar.id}`, { body: { motivo_baja: motivoEliminar } });
+      setSocios(socios.filter((s) => s.id !== socioAEliminar.id));
+      showSuccessToast('Socio eliminado exitosamente.');
+      setSocioAEliminar(null);
     } catch (err) {
-      showErrorToast('Error de conexión.');
+      showErrorToast(err instanceof ApiError ? err.message : 'Error de conexión.');
+    } finally {
+      setIsEliminando(false);
     }
   };
 
@@ -442,7 +469,7 @@ const SociosScreen = () => {
                               </button>
                             )
                           )}
-                          <button onClick={() => handleDelete(socio.id)} title="Eliminar" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => openEliminarModal(socio)} title="Eliminar" className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                         </>
                       )}
                     </td>
@@ -493,6 +520,19 @@ const SociosScreen = () => {
                     </select>
                   </div>
                 </div>
+
+                {requiereMotivoBaja && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <label className="block text-sm font-semibold text-amber-800 mb-1">Motivo de la baja (obligatorio)</label>
+                    <textarea
+                      value={motivoBaja} onChange={(e) => setMotivoBaja(e.target.value)}
+                      required rows="2" maxLength="300"
+                      placeholder="Ej. Vendió su cupo a otro socio / Se retiró voluntariamente de la cooperativa..."
+                      className="w-full px-4 py-2.5 bg-white border border-amber-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 resize-none"
+                    />
+                    <p className="text-xs text-amber-700 mt-1">Se guardará en las observaciones del socio, con la fecha de hoy.</p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -643,6 +683,42 @@ const SociosScreen = () => {
                   ${isCuentaSubmitting ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-[#FFCC00] text-slate-900 hover:bg-yellow-500'}`}
               >
                 {isCuentaSubmitting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Creando...</> : <><KeyRound className="w-5 h-5 mr-2" /> Crear Cuenta</>}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ELIMINAR: pide el motivo antes de confirmar */}
+      {socioAEliminar && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">Eliminar Socio</h3>
+                <p className="text-slate-500 mt-1 text-sm">
+                  {socioAEliminar.nombre} podrá reactivarse después desde "Ver Eliminados", con su historial intacto.
+                </p>
+              </div>
+              <button onClick={() => setSocioAEliminar(null)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-6 h-6" /></button>
+            </div>
+            <form onSubmit={handleConfirmarEliminar} className="p-4 pt-4 sm:p-6 sm:pt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Motivo de la eliminación</label>
+                <textarea
+                  value={motivoEliminar} onChange={(e) => setMotivoEliminar(e.target.value)}
+                  required maxLength="300" rows="3" autoFocus
+                  placeholder="Ej. Registro duplicado / Nunca llegó a afiliarse..."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 resize-none"
+                />
+              </div>
+              <button
+                type="submit" disabled={isEliminando}
+                className={`w-full py-3 rounded-xl font-bold flex items-center justify-center transition-colors shadow-md ${
+                  isEliminando ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
+              >
+                {isEliminando ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Eliminando...</> : <><Trash2 className="w-5 h-5 mr-2" /> Confirmar Eliminación</>}
               </button>
             </form>
           </div>

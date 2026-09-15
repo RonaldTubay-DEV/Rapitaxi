@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Upload, X, AlertCircle, Receipt, Calendar } from 'lucide-react';
+import { Loader2, Upload, X, AlertCircle, Receipt, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { API_URL } from '../../apiConfig';
 import { apiClient } from '../../lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../../utils/feedback';
@@ -11,6 +11,12 @@ const ESTADO_ESTILO = {
   Pendiente: 'bg-amber-100 text-amber-700',
   Aprobado: 'bg-green-100 text-green-700',
   Rechazado: 'bg-red-100 text-red-700',
+};
+
+const ESTADO_ICONO = {
+  Pendiente: Clock,
+  Aprobado: CheckCircle2,
+  Rechazado: XCircle,
 };
 
 const MisAportacionesScreen = () => {
@@ -88,6 +94,9 @@ const MisAportacionesScreen = () => {
     }
   };
 
+  const estaAlDia = aportaciones.some((a) => a.mes_pagado === mesActual && a.anio_pagado === anioActual && a.estado === 'Aprobado');
+  const pendientesCount = aportaciones.filter((a) => a.estado === 'Pendiente').length;
+
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
@@ -98,6 +107,43 @@ const MisAportacionesScreen = () => {
         <button onClick={openModal} className="bg-slate-900 text-yellow-400 px-4 py-2.5 rounded-xl font-bold flex items-center justify-center hover:bg-slate-800 transition-colors shadow-md whitespace-nowrap">
           <Upload className="w-5 h-5 mr-2" /> Subir Comprobante
         </button>
+      </div>
+
+      {/* Resumen rapido: lo primero que quiere saber el socio es si esta al dia.
+          3 columnas en desktop para no dejar tarjetas sueltas con espacio vacio,
+          1 sola en movil. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className={`rounded-2xl p-5 flex items-center gap-4 shadow-sm border ${
+          estaAlDia ? 'bg-green-50 border-green-100' : 'bg-red-50 border-red-100'
+        }`}>
+          <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${estaAlDia ? 'bg-green-500' : 'bg-red-500'}`}>
+            {estaAlDia ? <CheckCircle2 className="w-6 h-6 text-white" /> : <XCircle className="w-6 h-6 text-white" />}
+          </div>
+          <div>
+            <p className={`font-extrabold ${estaAlDia ? 'text-green-700' : 'text-red-700'}`}>
+              {estaAlDia ? 'Al día' : 'En mora'}
+            </p>
+            <p className="text-xs text-slate-500">{NOMBRES_MESES[mesActual - 1]} {anioActual}</p>
+          </div>
+        </div>
+        <div className="rounded-2xl p-5 flex items-center gap-4 shadow-sm border border-amber-100 bg-amber-50">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-amber-400">
+            <Clock className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <p className="font-extrabold text-amber-700">{pendientesCount} pendiente{pendientesCount !== 1 ? 's' : ''}</p>
+            <p className="text-xs text-slate-500">Esperando revisión del administrador</p>
+          </div>
+        </div>
+        <div className="rounded-2xl p-5 flex items-center gap-4 shadow-sm border border-slate-100 bg-white sm:col-span-2 lg:col-span-1">
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-slate-900">
+            <Receipt className="w-6 h-6 text-yellow-400" />
+          </div>
+          <div>
+            <p className="font-extrabold text-slate-800">{aportaciones.length} en total</p>
+            <p className="text-xs text-slate-500">Comprobantes subidos históricamente</p>
+          </div>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -116,7 +162,9 @@ const MisAportacionesScreen = () => {
                 <tr><td colSpan="4" className="p-8 text-center text-slate-400"><Loader2 className="w-7 h-7 animate-spin mx-auto mb-2" />Cargando...</td></tr>
               ) : aportaciones.length === 0 ? (
                 <tr><td colSpan="4" className="p-8 text-center text-slate-400"><Receipt className="w-10 h-10 mx-auto mb-2 opacity-30" />Aún no has subido ningún comprobante.</td></tr>
-              ) : aportaciones.map((a) => (
+              ) : aportaciones.map((a) => {
+                const IconoEstado = ESTADO_ICONO[a.estado];
+                return (
                 <tr key={a.id} className="hover:bg-slate-50 transition-colors">
                   <td className="p-4">
                     <span className="flex items-center font-semibold text-slate-700">
@@ -125,8 +173,8 @@ const MisAportacionesScreen = () => {
                   </td>
                   <td className="p-4 font-bold text-slate-800">${parseFloat(a.monto).toFixed(2)}</td>
                   <td className="p-4">
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${ESTADO_ESTILO[a.estado] || 'bg-slate-100 text-slate-600'}`}>
-                      {a.estado}
+                    <span className={`inline-flex items-center px-3 py-1 text-xs font-bold rounded-full ${ESTADO_ESTILO[a.estado] || 'bg-slate-100 text-slate-600'}`}>
+                      {IconoEstado && <IconoEstado className="w-3.5 h-3.5 mr-1" />} {a.estado}
                     </span>
                   </td>
                   <td className="p-4 text-xs text-slate-500 max-w-xs">
@@ -139,7 +187,8 @@ const MisAportacionesScreen = () => {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

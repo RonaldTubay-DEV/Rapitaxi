@@ -24,18 +24,27 @@ class AuditoriaController extends Controller
 
         $porPagina = min((int) $request->input('per_page', 25), 100);
 
-        $actividad = $query->paginate($porPagina)->through(fn (Activity $log) => [
-            'id' => $log->id,
-            'modulo' => $log->log_name,
-            'evento' => $log->event,
-            'descripcion' => $log->description,
-            'sujeto_tipo' => $log->subject_type ? class_basename($log->subject_type) : null,
-            'sujeto_id' => $log->subject_id,
-            'usuario' => $log->causer?->name,
-            'usuario_email' => $log->causer?->email,
-            'cambios' => $log->properties,
-            'fecha' => $log->created_at,
-        ]);
+        $actividad = $query->paginate($porPagina)->through(function (Activity $log) {
+            // ip/user_agent viajan mezclados con el resto de las propiedades
+            // (los agrega TapsActivityWithRequestMeta en cada modelo); se
+            // separan aqui para no confundirlos con el diff de atributos.
+            $cambios = $log->properties->except(['ip', 'user_agent']);
+
+            return [
+                'id' => $log->id,
+                'modulo' => $log->log_name,
+                'evento' => $log->event,
+                'descripcion' => $log->description,
+                'sujeto_tipo' => $log->subject_type ? class_basename($log->subject_type) : null,
+                'sujeto_id' => $log->subject_id,
+                'usuario' => $log->causer?->name,
+                'usuario_email' => $log->causer?->email,
+                'ip' => $log->properties->get('ip'),
+                'user_agent' => $log->properties->get('user_agent'),
+                'cambios' => $cambios,
+                'fecha' => $log->created_at,
+            ];
+        });
 
         return response()->json($actividad, 200);
     }

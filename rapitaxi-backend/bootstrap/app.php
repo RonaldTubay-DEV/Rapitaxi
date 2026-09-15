@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // Activamos CORS globalmente
         $middleware->append(\Illuminate\Http\Middleware\HandleCors::class);
 
+        // Render pone su propio proxy/balanceador delante de la app: sin
+        // confiar en el (todos, '*') $request->ip() devuelve la IP interna
+        // de Render en vez de la IP real de quien hizo la peticion.
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

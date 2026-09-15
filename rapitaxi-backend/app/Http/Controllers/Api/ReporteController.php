@@ -19,9 +19,14 @@ class ReporteController extends Controller
             $tablaAportaciones = (new Aportacion)->getTable();
 
             $reporte = DB::table('socios as s')
-                ->leftJoin('vehiculos as v', 's.id', '=', 'v.socio_id')
+                ->leftJoin('vehiculos as v', function ($join) {
+                    $join->on('s.id', '=', 'v.socio_id')->whereNull('v.deleted_at');
+                })
                 ->leftJoin(DB::raw("(SELECT vehiculo_id, MAX(fecha_revision) as ultima_fecha FROM revisiones WHERE estado = 'Aprobada' GROUP BY vehiculo_id) as r"), 'v.id', '=', 'r.vehiculo_id')
-                ->leftJoin(DB::raw("(SELECT socio_id, COUNT(*) as pagos_mes FROM {$tablaAportaciones} WHERE mes_pagado = {$mesActual} AND anio_pagado = {$anioActual} GROUP BY socio_id) as a"), 's.id', '=', 'a.socio_id')
+                ->leftJoin(DB::raw("(SELECT socio_id, COUNT(*) as pagos_mes FROM {$tablaAportaciones} WHERE mes_pagado = {$mesActual} AND anio_pagado = {$anioActual} AND estado = 'Aprobado' GROUP BY socio_id) as a"), 's.id', '=', 'a.socio_id')
+                // Esta consulta es SQL crudo (no Eloquent), asi que el borrado
+                // suave no se aplica solo: hay que excluirlo a mano.
+                ->whereNull('s.deleted_at')
                 ->select(
                     'v.numero_vehiculo',
                     'v.placa',

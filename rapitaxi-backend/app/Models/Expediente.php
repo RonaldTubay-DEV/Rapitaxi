@@ -4,12 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Traits\TapsActivityWithRequestMeta;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
 class Expediente extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, TapsActivityWithRequestMeta;
 
     protected $fillable = [
         'socio_id',

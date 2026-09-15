@@ -24,7 +24,7 @@ const SocioPortalLayout = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <header className="bg-slate-900 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center">
             <CarFront className="w-7 h-7 mr-2 text-yellow-400" />
             <span className="font-extrabold tracking-tight">RAPITAXI</span>
@@ -37,7 +37,7 @@ const SocioPortalLayout = () => {
             </button>
           </div>
         </div>
-        <nav className="max-w-4xl mx-auto px-4 sm:px-6 flex gap-1">
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1">
           {TABS.map((tab) => {
             const isActive = location.pathname === tab.path;
             return (
@@ -55,7 +55,7 @@ const SocioPortalLayout = () => {
         </nav>
       </header>
 
-      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-8">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Outlet />
       </main>
     </div>

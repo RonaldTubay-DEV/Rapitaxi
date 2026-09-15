@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Traits\TapsActivityWithRequestMeta;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -15,7 +16,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, LogsActivity, Notifiable; // <-- HABILIDAD DE TOKENS Y ROLES AGREGADA
+    use HasApiTokens, HasFactory, HasRoles, LogsActivity, Notifiable, TapsActivityWithRequestMeta; // <-- HABILIDAD DE TOKENS Y ROLES AGREGADA
 
     /**
      * The attributes that are mass assignable.

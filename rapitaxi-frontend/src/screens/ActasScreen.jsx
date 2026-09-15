@@ -187,9 +187,12 @@ const ActasScreen = () => {
       {/* ESTILOS GLOBALES PARA LA IMPRESIÓN */}
       <style>{`
         @media print {
-          body { background: white !important; margin: 0; padding: 0; }
+          html, body { background: white !important; margin: 0; padding: 0; height: auto !important; overflow: visible !important; }
           aside, nav, header { display: none !important; }
-          main { padding: 0 !important; margin: 0 !important; width: 100% !important; }
+          main { padding: 0 !important; margin: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+          /* El area con scroll del panel (ver MainLayout) recorta todo lo
+             que no cabe en la pantalla; sin esto la hoja sale en blanco. */
+          .panel-scroll-area { overflow: visible !important; height: auto !important; }
           .print\\:hidden { display: none !important; }
           .print\\:flex { display: flex !important; }
           @page { size: landscape; margin: 1cm; }

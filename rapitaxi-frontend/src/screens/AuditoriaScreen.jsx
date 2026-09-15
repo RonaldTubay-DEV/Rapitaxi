@@ -28,6 +28,26 @@ const EVENTO_LABEL = {
   restored: 'Reactivado',
 };
 
+// Interpretacion simple del user-agent para mostrar algo legible ("Chrome ·
+// Windows") en vez del string crudo completo, sin agregar una libreria mas.
+const resumirUserAgent = (ua) => {
+  if (!ua) return null;
+  let navegador = 'Navegador desconocido';
+  if (/Edg\//.test(ua)) navegador = 'Edge';
+  else if (/Chrome\//.test(ua) && !/Chromium/.test(ua)) navegador = 'Chrome';
+  else if (/Firefox\//.test(ua)) navegador = 'Firefox';
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) navegador = 'Safari';
+
+  let so = '';
+  if (/Windows/.test(ua)) so = 'Windows';
+  else if (/Mac OS X/.test(ua)) so = 'macOS';
+  else if (/Android/.test(ua)) so = 'Android';
+  else if (/iPhone|iPad/.test(ua)) so = 'iOS';
+  else if (/Linux/.test(ua)) so = 'Linux';
+
+  return so ? `${navegador} · ${so}` : navegador;
+};
+
 // Muestra el "antes -> despues" de los campos que realmente cambiaron,
 // tal como los guarda el paquete de auditoria (attributes = valor nuevo,
 // old = valor anterior; en "created" solo viene attributes).
@@ -125,7 +145,14 @@ const AuditoriaScreen = () => {
                   <td className="p-4 whitespace-nowrap text-slate-500 text-xs">
                     {new Date(r.fecha).toLocaleString()}
                   </td>
-                  <td className="p-4 font-semibold text-slate-700">{r.usuario || 'Sistema'}</td>
+                  <td className="p-4">
+                    <p className="font-semibold text-slate-700">{r.usuario || 'Sistema'}</p>
+                    {(r.ip || r.user_agent) && (
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {r.ip}{r.ip && r.user_agent ? ' · ' : ''}{resumirUserAgent(r.user_agent)}
+                      </p>
+                    )}
+                  </td>
                   <td className="p-4">
                     <span className={`px-2 py-1 text-xs font-bold rounded-full ${EVENTO_ESTILO[r.evento] || 'bg-slate-100 text-slate-600'}`}>
                       {EVENTO_LABEL[r.evento] || r.evento}

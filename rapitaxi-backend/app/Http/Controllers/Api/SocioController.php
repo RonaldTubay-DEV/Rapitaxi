@@ -88,18 +88,28 @@ class SocioController extends Controller
 
         // Validamos la cédula asegurando que ignore el ID actual para permitir la actualización
         $request->validate([
-           
+
             'nombre'          => 'required|string|max:80',
             'cedula'          => ['nullable', 'digits:10', Rule::unique('socios', 'cedula')->whereNull('deleted_at')->ignore($id)],
-            'telefono'        => 'nullable|digits:10',                             
+            'telefono'        => 'nullable|digits:10',
             'correo'          => 'nullable|email|max:100',
             'direccion'       => 'nullable|string|max:150',
             'estado'          => 'required|in:Activo,Inactivo',
             'observaciones'   => 'nullable|string|max:500',
-            
+
         ]);
 
-        $socio->update($request->all());
+        $datos = $request->only(['nombre', 'cedula', 'telefono', 'correo', 'direccion', 'estado', 'observaciones']);
+
+        // Pasar a Inactivo es una decision con peso (deja de aparecer como
+        // socio operativo): exigimos que quede por que, junto con quien y
+        // cuando lo hizo (eso ya lo cubre la auditoria).
+        if ($socio->estado === 'Activo' && $datos['estado'] === 'Inactivo') {
+            $request->validate(['motivo_baja' => 'required|string|max:300']);
+            $datos['observaciones'] = $this->conMotivoBaja($request->motivo_baja, $datos['observaciones'] ?? null);
+        }
+
+        $socio->update($datos);
 
         return response()->json([
             'message' => 'Socio actualizado con éxito.',
@@ -108,7 +118,7 @@ class SocioController extends Controller
     }
 
     // 5. Eliminar un socio del sistema (borrado suave: se puede reactivar despues)
-    public function destroy($id)
+    public function destroy(Request $request, $id)
     {
         $socio = Socio::find($id);
 
@@ -116,9 +126,23 @@ class SocioController extends Controller
             return response()->json(['message' => 'Socio no encontrado.'], 404);
         }
 
+        $request->validate(['motivo_baja' => 'required|string|max:300']);
+
+        $socio->observaciones = $this->conMotivoBaja($request->motivo_baja, $socio->observaciones);
+        $socio->save();
+
         $socio->delete();
 
         return response()->json(['message' => 'Socio eliminado con éxito.'], 200);
+    }
+
+    // Antepone el motivo (con fecha) a las observaciones existentes, sin
+    // perder lo que ya hubiera escrito antes.
+    private function conMotivoBaja(string $motivo, ?string $observacionesActuales): string
+    {
+        $nota = '[' . now()->format('d/m/Y H:i') . '] ' . $motivo;
+
+        return $observacionesActuales ? "{$nota}\n\n{$observacionesActuales}" : $nota;
     }
 
     // 6. Listar socios dados de baja, para poder reactivarlos
