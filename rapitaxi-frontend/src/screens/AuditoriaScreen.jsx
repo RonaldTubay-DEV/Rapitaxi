@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { History, Loader2, ChevronLeft, ChevronRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiClient } from '../lib/apiClient';
 
 const MODULOS = [
@@ -48,9 +48,24 @@ const resumirUserAgent = (ua) => {
   return so ? `${navegador} · ${so}` : navegador;
 };
 
+// Resumen de una linea para no saturar la tabla: cuantos campos cambiaron,
+// o que paso, sin mostrar el detalle completo. "Ver detalle" lo expande.
+const resumenEvento = (registro) => {
+  if (registro.evento === 'created') return 'Registro creado';
+  if (registro.evento === 'deleted') return 'Registro eliminado';
+  if (registro.evento === 'restored') return 'Registro reactivado';
+
+  const campos = Object.keys(registro.cambios?.attributes || {});
+  if (campos.length === 0) return 'Sin cambios detectados';
+  return `Cambió: ${campos.join(', ')}`;
+};
+
 // Muestra el "antes -> despues" de los campos que realmente cambiaron,
 // tal como los guarda el paquete de auditoria (attributes = valor nuevo,
-// old = valor anterior; en "created" solo viene attributes).
+// old = valor anterior; en "created"/"deleted" solo viene attributes, con
+// la ficha completa tal cual quedo -- ahi "antes" y "despues" suelen ser
+// iguales para los campos que no tuvieron que ver con la acción, asi que
+// el tachado solo se muestra cuando el valor realmente cambio).
 const CambiosDetalle = ({ cambios }) => {
   const nuevos = cambios?.attributes || {};
   const anteriores = cambios?.old || {};
@@ -60,15 +75,21 @@ const CambiosDetalle = ({ cambios }) => {
 
   return (
     <div className="space-y-1">
-      {campos.map((campo) => (
-        <div key={campo} className="text-xs">
-          <span className="font-semibold text-slate-600">{campo}: </span>
-          {campo in anteriores && (
-            <span className="text-red-500 line-through mr-1">{String(anteriores[campo] ?? 'vacío')}</span>
-          )}
-          <span className="text-slate-700">{String(nuevos[campo] ?? anteriores[campo] ?? '')}</span>
-        </div>
-      ))}
+      {campos.map((campo) => {
+        const valorAnterior = anteriores[campo];
+        const valorNuevo = nuevos[campo] ?? valorAnterior;
+        const cambioDeVerdad = campo in anteriores && String(valorAnterior) !== String(valorNuevo);
+
+        return (
+          <div key={campo} className="text-xs">
+            <span className="font-semibold text-slate-600">{campo}: </span>
+            {cambioDeVerdad && (
+              <span className="text-red-500 line-through mr-1">{String(valorAnterior ?? 'vacío')}</span>
+            )}
+            <span className="text-slate-700">{String(valorNuevo ?? '') || 'vacío'}</span>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -80,6 +101,7 @@ const AuditoriaScreen = () => {
   const [modulo, setModulo] = useState('');
   const [pagina, setPagina] = useState(1);
   const [meta, setMeta] = useState({ current_page: 1, last_page: 1, total: 0 });
+  const [expandidoId, setExpandidoId] = useState(null);
 
   useEffect(() => {
     const fetchAuditoria = async () => {
@@ -160,7 +182,21 @@ const AuditoriaScreen = () => {
                   </td>
                   <td className="p-4 text-slate-600">{r.sujeto_tipo || r.modulo}</td>
                   <td className="p-4 text-slate-400 text-xs">#{r.sujeto_id}</td>
-                  <td className="p-4 max-w-sm"><CambiosDetalle cambios={r.cambios} /></td>
+                  <td className="p-4 max-w-sm">
+                    <button
+                      type="button"
+                      onClick={() => setExpandidoId(expandidoId === r.id ? null : r.id)}
+                      className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-900 font-medium text-left"
+                    >
+                      {expandidoId === r.id ? <ChevronUp className="w-3.5 h-3.5 flex-shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 flex-shrink-0" />}
+                      {resumenEvento(r)}
+                    </button>
+                    {expandidoId === r.id && (
+                      <div className="mt-2 pt-2 border-t border-slate-100">
+                        <CambiosDetalle cambios={r.cambios} />
+                      </div>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
