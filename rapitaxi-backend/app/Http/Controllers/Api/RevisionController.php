@@ -20,7 +20,7 @@ class RevisionController extends Controller
     {
         $request->validate([
             'vehiculo_id'    => ['required', Rule::exists('vehiculos', 'id')->whereNull('deleted_at')],
-            'fecha_revision' => 'required|date',
+            'fecha_revision' => ['required', 'date', 'after_or_equal:2000-01-01', Rule::when(in_array($request->estado, ['Aprobada', 'Rechazada'], true), ['before_or_equal:today'])],
             'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
             'observaciones'  => 'nullable|string|max:500',
@@ -53,7 +53,7 @@ class RevisionController extends Controller
 
         $request->validate([
             'vehiculo_id'    => ['required', Rule::exists('vehiculos', 'id')->whereNull('deleted_at')],
-            'fecha_revision' => 'required|date',
+            'fecha_revision' => ['required', 'date', 'after_or_equal:2000-01-01', Rule::when(in_array($request->estado, ['Aprobada', 'Rechazada'], true), ['before_or_equal:today'])],
             'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
             'observaciones'  => 'nullable|string|max:500',

@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -44,7 +43,5 @@ class RolesAndPermissionsSeeder extends Seeder
 
         // Reservado para el futuro portal de socios (solo lectura de su propia info).
         Role::firstOrCreate(['name' => 'socio']);
-
-        User::whereDoesntHave('roles')->each(fn (User $user) => $user->assignRole('admin'));
     }
 }

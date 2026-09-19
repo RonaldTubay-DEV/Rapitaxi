@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aportacion;
+use App\Models\Socio;
 use Illuminate\Http\Request;
 
 /**
@@ -24,16 +25,63 @@ class SocioPortalController extends Controller
             ], 422));
         }
 
+        // Una baja debe cortar el acceso aunque la cuenta siga existiendo.
+        if ($socio->estado !== 'Activo') {
+            abort(response()->json([
+                'message' => 'Tu cuenta de socio no esta activa. Contacta al administrador.',
+            ], 403));
+        }
+
         return $socio;
+    }
+
+    // Solo lo que el socio necesita ver de si mismo. Nunca se devuelve el
+    // modelo completo: trae las observaciones internas del staff y ids de
+    // cuenta que no le corresponden.
+    private function perfilPublico(Socio $socio): array
+    {
+        $socio->loadMissing('vehiculos');
+
+        return [
+            'id' => $socio->id,
+            'nombre' => $socio->nombre,
+            'cedula' => $socio->cedula,
+            'telefono' => $socio->telefono,
+            'correo' => $socio->correo,
+            'direccion' => $socio->direccion,
+            'estado' => $socio->estado,
+            'vehiculos' => $socio->vehiculos->map(fn ($v) => [
+                'id' => $v->id,
+                'numero_vehiculo' => $v->numero_vehiculo,
+                'placa' => $v->placa,
+                'marca' => $v->marca,
+                'modelo' => $v->modelo,
+                'anio_fabricacion' => $v->anio_fabricacion,
+                'color' => $v->color,
+            ])->values(),
+        ];
+    }
+
+    // Sin la ruta interna del archivo en el almacenamiento ni quien lo reviso.
+    private function aportacionPublica(Aportacion $aportacion): array
+    {
+        return [
+            'id' => $aportacion->id,
+            'mes_pagado' => $aportacion->mes_pagado,
+            'anio_pagado' => $aportacion->anio_pagado,
+            'monto' => $aportacion->monto,
+            'fecha_pago' => $aportacion->fecha_pago,
+            'estado' => $aportacion->estado,
+            'motivo_rechazo' => $aportacion->motivo_rechazo,
+        ];
     }
 
     // 1. Ver mi propia ficha (datos personales + vehiculos a mi nombre)
     public function perfil(Request $request)
     {
         $socio = $this->socioAutenticado($request);
-        $socio->load('vehiculos');
 
-        return response()->json($socio, 200);
+        return response()->json($this->perfilPublico($socio), 200);
     }
 
     // 2. Actualizar solo mis datos de contacto. Nombre, cedula y estado de
@@ -52,7 +100,7 @@ class SocioPortalController extends Controller
 
         return response()->json([
             'message' => 'Datos actualizados exitosamente.',
-            'socio' => $socio,
+            'socio' => $this->perfilPublico($socio),
         ], 200);
     }
 
@@ -64,7 +112,8 @@ class SocioPortalController extends Controller
         $aportaciones = Aportacion::where('socio_id', $socio->id)
             ->orderBy('anio_pagado', 'desc')
             ->orderBy('mes_pagado', 'desc')
-            ->get();
+            ->get()
+            ->map(fn (Aportacion $a) => $this->aportacionPublica($a));
 
         return response()->json($aportaciones, 200);
     }
@@ -78,8 +127,8 @@ class SocioPortalController extends Controller
 
         $request->validate([
             'mes_pagado' => 'required|integer|min:1|max:12',
-            'anio_pagado' => 'required|integer|min:2000|max:2100',
-            'monto' => 'required|numeric|min:0|max:99999.99',
+            'anio_pagado' => 'required|integer|min:2020|max:' . (now()->year + 1),
+            'monto' => 'required|numeric|min:0.01|max:99999.99',
             'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
@@ -105,7 +154,7 @@ class SocioPortalController extends Controller
 
         return response()->json([
             'message' => 'Comprobante enviado. Quedara reflejado como pagado cuando el administrador lo confirme.',
-            'aportacion' => $aportacion,
+            'aportacion' => $this->aportacionPublica($aportacion),
         ], 201);
     }
 }

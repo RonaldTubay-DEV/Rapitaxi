@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Socio;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Password;
 
 class SocioCuentaController extends Controller
 {
@@ -23,7 +24,7 @@ class SocioCuentaController extends Controller
 
         $validated = $request->validate([
             'email' => 'required|email|max:100|unique:users,email',
-            'password' => 'required|string|min:8|max:100',
+            'password' => ['required', 'string', 'max:100', Password::defaults()],
         ]);
 
         $user = User::create([

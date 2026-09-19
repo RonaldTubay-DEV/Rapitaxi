@@ -31,8 +31,8 @@ class AportacionController extends Controller
             'socio_id' => ['required', Rule::exists('socios', 'id')->whereNull('deleted_at')],
             'mes_pagado' => 'required|integer|min:1|max:12',
             'anio_pagado' => 'required|integer|min:2000|max:2100',
-            'monto' => 'required|numeric|min:0|max:99999.99',
-            'fecha_pago' => 'required|date',
+            'monto' => 'required|numeric|min:0.01|max:99999.99',
+            'fecha_pago' => 'required|date|before_or_equal:today',
             'metodo_pago' => 'nullable|string|max:30',
         ]);
 

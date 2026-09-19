@@ -44,7 +44,7 @@ class ExpedienteController extends Controller
         $expediente = Expediente::create([
             'socio_id'         => $request->socio_id,
             'nombre_documento' => $request->nombre_documento,
-            'tipo_documento'   => $file->getClientOriginalExtension(),
+            'tipo_documento'   => strtolower($file->extension()),
             'ruta_archivo'     => $ruta,
         ]);
 

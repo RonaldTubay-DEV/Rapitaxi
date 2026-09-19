@@ -31,6 +31,13 @@ class AuthController extends Controller
                 ]);
             }
 
+            $rol = $user->getRoleNames()->first();
+            if (! $rol) {
+                throw ValidationException::withMessages([
+                    'email' => ['Tu cuenta no tiene un rol asignado. Contacta al administrador.'],
+                ]);
+            }
+
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
@@ -40,7 +47,7 @@ class AuthController extends Controller
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->getRoleNames()->first() ?? 'admin',
+                    'role' => $rol,
                 ],
             ], 200);
         } catch (ValidationException $e) {

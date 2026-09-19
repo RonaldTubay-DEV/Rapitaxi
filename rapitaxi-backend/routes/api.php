@@ -19,11 +19,11 @@ use App\Http\Controllers\Api\VehiculoController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-// Limite propio de intentos (5 por minuto por IP), aparte del throttle:api
-// general, para dificultar fuerza bruta sobre credenciales.
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+// Limite propio de intentos (ver RateLimiter "login" en AppServiceProvider)
+// para dificultar la fuerza bruta sobre credenciales.
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
-Route::middleware(['auth:sanctum', 'active'])->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'throttle:api'])->group(function () {
     // Estas dos son validas para cualquier usuario autenticado (admin, operador o socio).
     Route::get('/user', function (Request $request) {
         return $request->user();

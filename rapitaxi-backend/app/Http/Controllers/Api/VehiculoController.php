@@ -26,7 +26,7 @@ class VehiculoController extends Controller
         // Dentro de tus métodos store y update:
         $request->validate([
             'socio_id'         => ['required', Rule::exists('socios', 'id')->whereNull('deleted_at')],
-            'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/'],
+            'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/', Rule::unique('vehiculos', 'numero_vehiculo')->whereNull('deleted_at')],
             'placa'            => ['required', 'regex:/^[A-Z]{3}-[0-9]{4}$/', Rule::unique('vehiculos', 'placa')->whereNull('deleted_at')],
             'marca'            => 'required|string|max:50',
             'modelo'           => 'required|string|max:50',
@@ -80,7 +80,7 @@ class VehiculoController extends Controller
         // Dentro de tus métodos store y update:
         $request->validate([
             'socio_id'         => ['required', Rule::exists('socios', 'id')->whereNull('deleted_at')],
-            'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/'],
+            'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/', Rule::unique('vehiculos', 'numero_vehiculo')->whereNull('deleted_at')->ignore($id)],
             'placa'            => ['required', 'regex:/^[A-Z]{3}-[0-9]{4}$/', Rule::unique('vehiculos', 'placa')->whereNull('deleted_at')->ignore($id)],
             'marca'            => 'required|string|max:50',
             'modelo'           => 'required|string|max:50',

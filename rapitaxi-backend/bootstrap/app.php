@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // de Render en vez de la IP real de quien hizo la peticion.
         $middleware->trustProxies(at: '*');
 
+        // Global (no solo del grupo "api"): asi tambien cubre las respuestas de
+        // error (401, 429), que Laravel genera antes de llegar a ese grupo.
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,

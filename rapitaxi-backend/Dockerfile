@@ -15,6 +15,11 @@ RUN apt-get update && apt-get install -y \
 # Instalar la extensión para PostgreSQL
 RUN docker-php-ext-install pdo_pgsql mbstring exif pcntl bcmath gd
 
+# La imagen base no trae php.ini: sin esto PHP limita las subidas a 2MB, por
+# debajo del maximo de 5MB que validan los controladores (fotos de celular),
+# y anuncia la version de PHP en cada respuesta (expose_php).
+RUN printf "upload_max_filesize=6M\npost_max_size=8M\nexpose_php=Off\n" > /usr/local/etc/php/conf.d/uploads.ini
+
 # Instalar Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

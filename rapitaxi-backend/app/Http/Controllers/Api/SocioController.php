@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Notificacion;
 use App\Models\Socio;
+use App\Rules\CedulaEcuatoriana;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -42,7 +43,7 @@ class SocioController extends Controller
         $request->validate([
             
             'nombre'          => 'required|string|max:80',
-            'cedula'          => ['nullable', 'digits:10', Rule::unique('socios', 'cedula')->whereNull('deleted_at')],
+            'cedula'          => ['nullable', 'digits:10', new CedulaEcuatoriana, Rule::unique('socios', 'cedula')->whereNull('deleted_at')],
             'telefono'        => 'nullable|digits:10',                      
             'correo'          => 'nullable|email|max:100',
             'direccion'       => 'nullable|string|max:150',
@@ -50,7 +51,7 @@ class SocioController extends Controller
             'observaciones'   => 'nullable|string|max:500',
         ]);
 
-        $socio = Socio::create($request->all());
+        $socio = Socio::create($request->only(['nombre', 'cedula', 'telefono', 'correo', 'direccion', 'estado', 'observaciones']));
 
         Notificacion::create([
             'tipo' => 'info',
@@ -90,7 +91,7 @@ class SocioController extends Controller
         $request->validate([
 
             'nombre'          => 'required|string|max:80',
-            'cedula'          => ['nullable', 'digits:10', Rule::unique('socios', 'cedula')->whereNull('deleted_at')->ignore($id)],
+            'cedula'          => ['nullable', 'digits:10', new CedulaEcuatoriana, Rule::unique('socios', 'cedula')->whereNull('deleted_at')->ignore($id)],
             'telefono'        => 'nullable|digits:10',
             'correo'          => 'nullable|email|max:100',
             'direccion'       => 'nullable|string|max:150',
@@ -109,7 +110,13 @@ class SocioController extends Controller
             $datos['observaciones'] = $this->conMotivoBaja($request->motivo_baja, $datos['observaciones'] ?? null);
         }
 
+        $seDaDeBaja = $socio->estado === 'Activo' && $datos['estado'] === 'Inactivo';
+
         $socio->update($datos);
+
+        if ($seDaDeBaja) {
+            $this->desactivarCuenta($socio);
+        }
 
         return response()->json([
             'message' => 'Socio actualizado con éxito.',
@@ -132,8 +139,22 @@ class SocioController extends Controller
         $socio->save();
 
         $socio->delete();
+        $this->desactivarCuenta($socio);
 
         return response()->json(['message' => 'Socio eliminado con éxito.'], 200);
+    }
+
+    // Un socio dado de baja no debe seguir entrando al portal ni con una
+    // sesion que ya tenia abierta. Al reactivar al socio, el admin decide
+    // por separado si vuelve a habilitar su cuenta.
+    private function desactivarCuenta(Socio $socio): void
+    {
+        $cuenta = $socio->user;
+
+        if ($cuenta) {
+            $cuenta->update(['is_active' => false]);
+            $cuenta->tokens()->delete();
+        }
     }
 
     // Antepone el motivo (con fecha) a las observaciones existentes, sin

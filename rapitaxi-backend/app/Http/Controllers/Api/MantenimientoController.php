@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Mantenimiento;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class MantenimientoController extends Controller
 {
@@ -36,11 +38,19 @@ class MantenimientoController extends Controller
 
         if ($request->estado === 'Completado') {
             $request->validate([
+                // Un trabajo ya terminado no puede tener fecha futura.
+                'fecha_mantenimiento' => 'required|date|before_or_equal:today',
                 'costo' => 'required|numeric|min:0.01|max:999999.99',
                 'kilometraje_actual' => 'required|integer|min:1|max:9999999',
                 'observaciones' => 'required|string|max:800',
                 'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             ]);
+
+            $this->validarKilometrajeNoRetrocede(
+                (int) $request->vehiculo_id,
+                (int) $request->kilometraje_actual,
+                (string) $request->fecha_mantenimiento
+            );
 
             if (in_array($request->tipo_mantenimiento, ['Cambio de Aceite', 'Frenos', 'Llantas'], true)) {
                 $request->validate([
@@ -104,6 +114,19 @@ class MantenimientoController extends Controller
                 'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             ]);
 
+            // Si estaba programado para una fecha futura y se termino antes,
+            // la fecha real del trabajo es hoy.
+            if (Carbon::parse($mantenimiento->fecha_mantenimiento)->isFuture()) {
+                $mantenimiento->fecha_mantenimiento = now()->toDateString();
+            }
+
+            $this->validarKilometrajeNoRetrocede(
+                (int) $mantenimiento->vehiculo_id,
+                (int) $request->kilometraje_actual,
+                (string) $mantenimiento->fecha_mantenimiento,
+                $mantenimiento->id
+            );
+
             if (in_array($mantenimiento->tipo_mantenimiento, ['Cambio de Aceite', 'Frenos', 'Llantas'], true)) {
                 $request->validate([
                     'proximo_mantenimiento_km' => 'required|integer|gt:kilometraje_actual|max:9999999',
@@ -136,6 +159,27 @@ class MantenimientoController extends Controller
             'message' => 'Estado de mantenimiento actualizado con exito.',
             'mantenimiento' => $mantenimiento
         ], 200);
+    }
+
+    // El odometro de una unidad solo sube: un kilometraje menor al del
+    // ultimo mantenimiento completado (a esa fecha o antes) es un error de
+    // digitacion o un intento de esconder un dato.
+    private function validarKilometrajeNoRetrocede(int $vehiculoId, int $km, string $fecha, ?int $ignorarId = null): void
+    {
+        $anterior = Mantenimiento::where('vehiculo_id', $vehiculoId)
+            ->where('estado', 'Completado')
+            ->whereDate('fecha_mantenimiento', '<=', $fecha)
+            ->when($ignorarId, fn ($q) => $q->where('id', '!=', $ignorarId))
+            ->orderByDesc('kilometraje_actual')
+            ->first();
+
+        if ($anterior && $km < $anterior->kilometraje_actual) {
+            throw ValidationException::withMessages([
+                'kilometraje_actual' => [
+                    "El kilometraje ({$km} km) no puede ser menor al del último mantenimiento completado de esta unidad ({$anterior->kilometraje_actual} km).",
+                ],
+            ]);
+        }
     }
 
     public function destroy($id)

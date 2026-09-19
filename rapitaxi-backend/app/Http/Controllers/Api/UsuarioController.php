@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UsuarioController extends Controller
 {
@@ -30,7 +31,7 @@ class UsuarioController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:80',
             'email' => 'required|email|max:100|unique:users,email',
-            'password' => 'required|string|min:8|max:100',
+            'password' => ['required', 'string', 'max:100', Password::defaults()],
             'role' => ['required', Rule::in(self::ROLES_ASIGNABLES)],
         ]);
 
@@ -61,7 +62,7 @@ class UsuarioController extends Controller
                 'max:100',
                 Rule::unique('users', 'email')->ignore($usuario->id),
             ],
-            'password' => 'nullable|string|min:8|max:100',
+            'password' => ['nullable', 'string', 'max:100', Password::defaults()],
             'role' => ['required', Rule::in(self::ROLES_ASIGNABLES)],
         ]);
 
@@ -75,8 +76,21 @@ class UsuarioController extends Controller
             unset($validated['password']);
         }
 
+        $cambiaAcceso = ! empty($validated['password']) || ! $usuario->hasRole($validated['role']);
+
         $usuario->update(collect($validated)->except('role')->all());
         $usuario->syncRoles([$validated['role']]);
+
+        // Si cambio la clave o el rol, las sesiones abiertas (por ejemplo un
+        // token robado) dejan de servir. Si quien edita es el mismo usuario se
+        // conserva su sesion actual para no sacarlo del panel.
+        if ($cambiaAcceso) {
+            $tokens = $usuario->tokens();
+            if ($request->user()->is($usuario)) {
+                $tokens->where('id', '!=', $request->user()->currentAccessToken()?->id);
+            }
+            $tokens->delete();
+        }
 
         return response()->json([
             'message' => 'Usuario actualizado exitosamente.',
