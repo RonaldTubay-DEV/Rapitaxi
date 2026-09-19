@@ -6,6 +6,7 @@ import { confirmDialog } from '../utils/confirmDialog';
 import { limitText, onlyDigits } from '../utils/inputFormatters';
 import { apiClient, ApiError } from '../lib/apiClient';
 import { useAuth } from '../features/auth/AuthContext';
+import { isValidCedulaEc } from '../utils/validators';
 
 const SociosScreen = () => {
   // ==========================================
@@ -164,6 +165,12 @@ const SociosScreen = () => {
 
     if (requiereMotivoBaja && motivoBaja.trim() === '') {
       setFormError('Debes indicar el motivo para dar de baja al socio.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (formData.cedula.trim() !== '' && !isValidCedulaEc(formData.cedula.trim())) {
+      setFormError('La cédula no es válida: revisa que los 10 dígitos estén bien escritos.');
       setIsSubmitting(false);
       return;
     }

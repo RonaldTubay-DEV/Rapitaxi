@@ -151,7 +151,7 @@ const MiPerfilScreen = () => {
           </div>
           <button
             type="submit" disabled={isSaving}
-            className={`px-6 py-3 rounded-xl font-bold flex items-center justify-center transition-colors shadow-md ${
+            className={`w-full sm:w-auto px-6 py-3 rounded-xl font-bold flex items-center justify-center transition-colors shadow-md ${
               isSaving ? 'bg-slate-200 text-slate-500 cursor-not-allowed' : 'bg-[#FFCC00] text-slate-900 hover:bg-yellow-500'
             }`}
           >

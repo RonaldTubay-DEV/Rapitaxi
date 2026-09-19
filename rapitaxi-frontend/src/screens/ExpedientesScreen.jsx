@@ -146,7 +146,7 @@ const ExpedientesScreen = () => {
   );
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-4rem)] flex-col bg-slate-50 overflow-hidden md:h-screen md:flex-row">
+    <div className="flex h-full min-h-[calc(100vh-4rem)] flex-col bg-slate-50 overflow-hidden md:h-full md:min-h-0 md:flex-row">
       
       {/* PANEL IZQUIERDO: LISTA DE SOCIOS */}
       <aside className="h-80 w-full bg-white border-b border-slate-200 flex flex-col md:h-auto md:w-80 md:border-b-0 md:border-r">

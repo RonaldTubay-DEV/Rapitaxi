@@ -37,18 +37,21 @@ const SocioPortalLayout = () => {
             </button>
           </div>
         </div>
-        <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1">
+        {/* overflow-x-auto es un seguro: si algun telefono muy angosto no
+            alcanza a mostrar las dos pestañas completas, se desliza en vez
+            de romper el diseño o encimarse. */}
+        <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-1 overflow-x-auto">
           {TABS.map((tab) => {
             const isActive = location.pathname === tab.path;
             return (
               <Link
                 key={tab.path}
                 to={tab.path}
-                className={`flex items-center px-4 py-3 text-sm font-bold border-b-2 transition-colors ${
+                className={`flex items-center whitespace-nowrap px-3 sm:px-4 py-3 text-xs sm:text-sm font-bold border-b-2 transition-colors ${
                   isActive ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-slate-300 hover:text-white'
                 }`}
               >
-                <tab.icon className="w-4 h-4 mr-2" /> {tab.label}
+                <tab.icon className="w-4 h-4 mr-1.5 sm:mr-2 flex-shrink-0" /> {tab.label}
               </Link>
             );
           })}

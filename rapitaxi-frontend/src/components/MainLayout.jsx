@@ -2,13 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import {
   CarFront, LayoutDashboard, Users, Wrench, FolderOpen,
-  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings, X, UserPlus, ChevronDown, History
+  FileText, ClipboardCheck, BookOpen, LogOut, Menu, DollarSign, Settings, X, UserPlus, ChevronDown, History, Sun, Moon
 } from 'lucide-react';
 
 // IMPORTAMOS TU NUEVO COMPONENTE DE NOTIFICACIONES
 // (Asegúrate de que la ruta sea correcta según donde guardaste el archivo)
 import NotificacionesBell from './NotificacionesBell';
 import { useAuth } from '../features/auth/AuthContext';
+import logoRapitaxi from '../img/image.png';
+import { getTheme, setTheme } from '../utils/theme';
 
 // Estructura del menu: enlaces sueltos y grupos con sub-opciones (acordeon).
 // Vive fuera del componente porque no depende de props/estado, asi no se
@@ -58,6 +60,7 @@ const MainLayout = () => {
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [openGroup, setOpenGroup] = useState(() => findGroupKeyForPath(location.pathname));
+  const [isDark, setIsDark] = useState(() => getTheme() === 'dark');
 
   useEffect(() => {
     const handleResize = () => setIsSidebarOpen(window.innerWidth >= 768);
@@ -65,6 +68,20 @@ const MainLayout = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Si el tema se cambia desde otro lado (ej. el interruptor en
+  // Configuración), este boton se actualiza solo para no quedar desincronizado.
+  useEffect(() => {
+    const handleThemeChanged = (e) => setIsDark(e.detail.theme === 'dark');
+    window.addEventListener('theme-changed', handleThemeChanged);
+    return () => window.removeEventListener('theme-changed', handleThemeChanged);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = isDark ? 'light' : 'dark';
+    setIsDark(next === 'dark');
+    setTheme(next);
+  };
 
   // Si el usuario llega por URL directa (o navega) a una pantalla dentro de
   // un grupo, ese grupo se abre solo para que siempre vea donde esta parado.
@@ -106,9 +123,10 @@ const MainLayout = () => {
       <aside className={`${isSidebarOpen ? 'translate-x-0 md:w-64' : '-translate-x-full md:translate-x-0 md:w-20'} fixed inset-y-0 left-0 w-72 bg-[#FFCC00] text-slate-900 transition-all duration-300 flex flex-col flex-shrink-0 z-30 shadow-lg`}>
         <div className="h-20 md:h-24 flex items-center justify-between px-4">
           <div className={`flex items-center overflow-hidden transition-all ${isSidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'}`}>
-            <CarFront className="w-8 h-8 mr-3 flex-shrink-0" />
+            <img src={logoRapitaxi} alt="RapiTaxi" className="w-10 h-10 mr-3 flex-shrink-0 rounded-full object-cover shadow-sm" />
             <div>
               <h1 className="font-extrabold text-xl tracking-tight leading-none">RAPITAXI</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-wide opacity-70 mt-0.5">Panel Administrativo</p>
             </div>
           </div>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 rounded-lg hover:bg-yellow-500 transition-colors flex-shrink-0">
@@ -193,15 +211,25 @@ const MainLayout = () => {
           El margen izquierdo compensa que el aside ahora es 'fixed' (fuera del flujo). */}
       <main className={`min-w-0 flex-1 flex flex-col h-screen overflow-hidden relative transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-20'}`}>
 
-        {/* NUEVA BARRA SUPERIOR (TOP BAR) */}
-        <header className="h-16 md:h-20 bg-slate-50 flex items-center justify-between md:justify-end px-4 sm:px-6 lg:px-8 flex-shrink-0 z-10">
+        {/* NUEVA BARRA SUPERIOR (TOP BAR): fondo y borde propios para que se
+            distinga del contenido de abajo, en vez de verse como una sola
+            pantalla continua. */}
+        <header className="h-16 md:h-20 bg-white border-b border-slate-200 flex items-center justify-between md:justify-end px-4 sm:px-6 lg:px-8 flex-shrink-0 z-10 shadow-sm">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 rounded-xl text-slate-700 hover:bg-white hover:shadow-sm md:hidden"
+            className="p-2 rounded-xl text-slate-700 hover:bg-slate-100 md:hidden"
           >
             <Menu className="w-6 h-6" />
           </button>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <button
+              onClick={toggleTheme}
+              title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-yellow-400 text-slate-900 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all"
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </button>
+
             {/* AQUÍ VA TU COMPONENTE DE CAMPANITA */}
             <NotificacionesBell />
 

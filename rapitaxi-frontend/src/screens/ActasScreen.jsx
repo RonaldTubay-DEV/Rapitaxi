@@ -67,7 +67,7 @@ const ActasScreen = () => {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-screen relative">
+    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-full relative">
       
       {/* =========================================
           SECCIÓN NO IMPRIMIBLE: Controles (Dashboard)

@@ -5,6 +5,8 @@ import { apiClient } from '../../lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../../utils/feedback';
 import { normalizeDecimal, onlyDigits } from '../../utils/inputFormatters';
 
+const MAX_COMPROBANTE_MB = 5;
+
 const NOMBRES_MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 const ESTADO_ESTILO = {
@@ -229,12 +231,25 @@ const MisAportacionesScreen = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-800 mb-1">Comprobante (PDF, JPG o PNG, máx. 5MB)</label>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Comprobante (PDF, JPG o PNG, máx. {MAX_COMPROBANTE_MB} MB)</label>
                 <input
-                  type="file" accept=".pdf,.jpg,.jpeg,.png"
-                  onChange={(e) => setArchivo(e.target.files[0] || null)}
+                  type="file" accept="image/jpeg,image/png,application/pdf"
+                  onChange={(e) => {
+                    const elegido = e.target.files[0] || null;
+                    if (elegido && elegido.size > MAX_COMPROBANTE_MB * 1024 * 1024) {
+                      setFormError(`El archivo pesa ${(elegido.size / 1024 / 1024).toFixed(1)} MB y el máximo es ${MAX_COMPROBANTE_MB} MB.`);
+                      e.target.value = '';
+                      setArchivo(null);
+                      return;
+                    }
+                    setFormError('');
+                    setArchivo(elegido);
+                  }}
                   className="w-full text-sm text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-slate-100 file:text-slate-700 file:font-semibold hover:file:bg-slate-200"
                 />
+                {/* Sin el atributo "capture": el celular ofrece elegir entre
+                    tomar una foto nueva o escoger una de la galeria/archivos,
+                    en vez de forzar solo la camara. */}
               </div>
 
               <button

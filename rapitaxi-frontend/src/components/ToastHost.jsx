@@ -9,6 +9,21 @@ const TOAST_STYLES = {
   error: { icon: AlertCircle, iconBg: 'bg-red-50 text-red-600', bar: 'bg-red-400', title: 'Algo salió mal' },
 };
 
+// Los mensajes de exito siguen casi todos el patron "Algo paso exitosamente."
+// o "Algo paso con exito."; en vez de pedirle a cada pantalla que mande un
+// titulo aparte (son ~30 lugares distintos), se recorta el propio mensaje
+// para armar un titulo corto y especifico a la accion (ej. "Usuario creado"
+// en vez del generico "Accion realizada" de siempre).
+const tituloDesdeMensaje = (mensaje) => {
+  if (!mensaje) return null;
+  const recortado = mensaje
+    .trim()
+    .replace(/\.+$/, '')
+    .replace(/\s+(exitosamente|con éxito|con exito)$/i, '')
+    .trim();
+  return recortado || null;
+};
+
 const ToastHost = () => {
   const [toasts, setToasts] = useState([]);
   const [closingIds, setClosingIds] = useState(() => new Set());
@@ -47,6 +62,7 @@ const ToastHost = () => {
         const style = TOAST_STYLES[toast.type] || TOAST_STYLES.success;
         const Icon = style.icon;
         const isClosing = closingIds.has(toast.id);
+        const titulo = (toast.type === 'success' && tituloDesdeMensaje(toast.message)) || style.title;
 
         return (
           <div
@@ -62,7 +78,7 @@ const ToastHost = () => {
               <Icon className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-black text-slate-900">{style.title}</p>
+              <p className="text-sm font-black text-slate-900">{titulo}</p>
               <p className="mt-0.5 text-sm font-medium leading-snug text-slate-600">{toast.message}</p>
             </div>
             <button

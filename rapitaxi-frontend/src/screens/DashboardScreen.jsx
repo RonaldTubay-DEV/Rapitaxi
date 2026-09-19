@@ -29,7 +29,7 @@ const DashboardScreen = () => {
   useEffect(() => { fetchDashboardData(); }, []);
 
   if (isLoading) {
-    return <div className="flex h-screen items-center justify-center bg-slate-50"><Loader2 className="w-12 h-12 animate-spin text-[#FFCC00]" /></div>;
+    return <div className="flex h-full min-h-[50vh] items-center justify-center bg-slate-50"><Loader2 className="w-12 h-12 animate-spin text-[#FFCC00]" /></div>;
   }
 
   if (error) {
@@ -43,7 +43,7 @@ const DashboardScreen = () => {
   const porcentajeLegal = kpis.flota_total > 0 ? Math.round((kpis.vehiculos_al_dia / kpis.flota_total) * 100) : 0;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-screen">
+    <div className="p-4 sm:p-6 lg:p-10 bg-slate-50 min-h-full">
       
       <div className="mb-8">
         <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Resumen Operativo</h2>
