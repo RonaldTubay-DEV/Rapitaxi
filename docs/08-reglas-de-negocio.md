@@ -172,6 +172,23 @@ Por eso el sistema no tiene ningún campo de costo.
 Para marcar un mantenimiento como Completado hay que adjuntar factura, orden de
 taller o una foto. Es la evidencia de que el trabajo realmente se hizo.
 
+### Preventivo o correctivo
+
+Cada trabajo se registra como una de dos cosas:
+
+| Naturaleza | Qué significa |
+|---|---|
+| **Preventivo** | Planificado por frecuencia (el cambio de aceite que tocaba) |
+| **Correctivo** | Se hizo porque algo falló (se dañó el cilindro de frenos) |
+
+**Por qué se distinguen:** el planteamiento del proyecto habla de llevar el
+"historial cronológico de fallas" de cada unidad. Sin esta distinción, un cambio
+de frenos programado y uno por avería se ven idénticos, y no hay forma de saber
+qué unidad está fallando más de lo normal.
+
+Ambos cuentan igual para el plan: si a una unidad le cambiaron los frenos por una
+falla, el próximo mantenimiento preventivo de frenos se cuenta desde esa fecha.
+
 ### Dos estados distintos, a propósito
 
 | Campo | Describe | Valores |
@@ -242,13 +259,28 @@ de 6 a 3 meses, las unidades con 4 meses pasan a aparecer vencidas al instante.
 
 ## 6. Revisiones (RTV)
 
-### Vigencia de un año
+### Cada revisión aprobada dice hasta cuándo vale
+
+Una RTV aprobada **exige su fecha de caducidad**, que viene impresa en el
+documento. Sin esa fecha el sistema no podría avisar antes de que expire, que es
+justamente lo que el proyecto promete.
+
+Estados de vigencia: **Vigente**, **Por vencer** (dentro de 30 días) y **Vencida**.
+
+El socio ve el aviso en su portal, por unidad: *"Revisión técnica (RTV): vence en
+20 días"* o *"vencida hace 12 días"*.
+
+**Solo las aprobadas tienen vigencia.** Una revisión rechazada o pendiente no
+habilita al vehículo, caduque o no, así que no reporta estado.
+
+### Vigencia de un año en el dashboard
 
 El dashboard considera "al día" a una unidad con revisión **aprobada** dentro de
-los últimos 12 meses. Una revisión aprobada hace tres años no vale.
+los últimos 12 meses.
 
-> Este plazo es un supuesto del sistema. Si la normativa local exige otro, se
-> ajusta en una sola constante del `DashboardController`.
+> Este plazo es un supuesto que quedó de antes de registrar la fecha de caducidad
+> real. Ahora que cada revisión trae la suya, el dashboard debería usarla en vez
+> del plazo fijo. Es una incoherencia pendiente de resolver.
 
 ### Una revisión aprobada o rechazada ya ocurrió
 
@@ -335,7 +367,8 @@ cambiar:
 
 | Supuesto | Valor actual | Dónde se cambia |
 |---|---|---|
-| Vigencia de la RTV | 12 meses | `DashboardController` |
+| Vigencia de la RTV (dashboard) | 12 meses | `DashboardController` |
+| Aviso antes de vencer la RTV | 30 días | `Revision::DIAS_AVISO_VENCIMIENTO` |
 | "Unidad descuidada" | 6 meses sin trabajos | `DashboardController` |
 | Frecuencias de mantenimiento | 3 a 12 meses según el tipo | Pantalla de Configuración |
 | Vencimiento de sesión | 12 horas | `SANCTUM_EXPIRATION_MINUTES` |

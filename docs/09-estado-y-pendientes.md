@@ -14,8 +14,8 @@ Inventario honesto de qué está terminado, qué quedó a medias y qué falta.
 | Vehículos | ✅ Completo | Con tipo y combustible según documentos oficiales |
 | Expedientes | ✅ Completo | Clasificados por tipo, con control de vencimientos y completitud |
 | Aportaciones | ✅ Completo | Pago manual y comprobante con aprobación |
-| Mantenimiento | ✅ Completo | Registro, plan de frecuencias y aprobación |
-| Revisiones (RTV) | ✅ Completo | |
+| Mantenimiento | ✅ Completo | Preventivo/correctivo, plan de frecuencias y aprobación |
+| Revisiones (RTV) | ✅ Completo | Con fecha de vencimiento y aviso al socio |
 | Libros contables | ✅ Completo | |
 | Dashboard | ✅ Completo | 4 indicadores más estado legal y actividad |
 | Cuadro maestro (Actas) | ✅ Completo | Con impresión |
@@ -109,6 +109,15 @@ definiciones distintas de "unidad descuidada" conviviendo.
 **Recomendación:** que el dashboard pase a contar unidades con algún mantenimiento
 vencido según el plan.
 
+Lo mismo ocurre con la RTV: desde el 26/09/2026 cada revisión aprobada guarda su
+**fecha de vencimiento real**, y el portal del socio avisa con ella. Pero el
+indicador "Estatus Legal" del dashboard sigue usando una ventana fija de **12
+meses** desde la fecha de revisión. Son dos criterios distintos de "RTV vigente".
+
+**Recomendación:** que el dashboard use `fecha_vencimiento` cuando exista y deje
+la ventana de 12 meses solo como respaldo para las revisiones antiguas que se
+cargaron sin ella.
+
 ---
 
 ## 4. Pendientes de infraestructura
@@ -180,7 +189,9 @@ Para revender el sistema a otra cooperativa deben ser configurables.
 ### Vencimientos y alertas
 
 Con la caducidad de matrícula y habilitación cargadas se podrían generar alertas
-como las de mantenimiento.
+como las de mantenimiento. El mecanismo ya existe —los expedientes calculan
+`Vigente`, `Por vencer` y `Vencido`, y la RTV avisa en el portal—; falta llevar
+esos avisos al portal del socio también para sus documentos.
 
 ### Privacidad
 
@@ -195,6 +206,14 @@ que decidir qué se digitaliza y qué no.
 ---
 
 ## 6. Mejoras sugeridas
+
+> **Alineación con el anteproyecto (26/09/2026).** Se contrastó el documento de
+> tesis contra lo implementado y se cerraron tres brechas: los mantenimientos
+> distinguen **preventivo de correctivo** (sin eso no hay "historial cronológico
+> de fallas"), cada RTV aprobada registra **hasta cuándo vale** y el socio lo ve
+> por unidad, y el catálogo de expedientes incorporó **licencia de conducir,
+> póliza de seguro y récord de infracciones**, que el documento nombra y el
+> sistema no admitía. Cubierto por `ObjetivosDelProyectoTest`.
 
 > **Expedientes (25/09/2026).** El módulo dejó de ser un repositorio de archivos:
 > cada documento se clasifica según el catálogo real de la cooperativa, los que
@@ -239,8 +258,8 @@ que decidir qué se digitaliza y qué no.
 
 **Lo que funciona bien.** El núcleo del sistema está completo y probado: socios,
 vehículos, documentos, aportaciones y mantenimiento, con separación estricta de
-roles, auditoría completa y 81 pruebas que cubren los caminos críticos y los
-errores encontrados.
+roles, auditoría completa y 107 pruebas que cubren los caminos críticos, los
+errores encontrados y lo que el anteproyecto promete.
 
 **Lo que hay que atender antes de producción real.** Respaldos de la base de datos,
 verificación de la configuración de producción y actualización de dependencias.

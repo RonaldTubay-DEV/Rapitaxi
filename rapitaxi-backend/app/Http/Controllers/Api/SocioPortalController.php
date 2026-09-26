@@ -144,9 +144,25 @@ class SocioPortalController extends Controller
             ->orderByDesc('revisado_en')
             ->get(['id', 'vehiculo_id', 'tipo_mantenimiento', 'fecha_mantenimiento', 'motivo_rechazo']);
 
+        // Ultima RTV aprobada de cada unidad: el proyecto promete avisar al
+        // socio antes de que expire, no solo dejar constancia de que se hizo.
+        $revisiones = \App\Models\Revision::whereIn('vehiculo_id', $vehiculos->pluck('id'))
+            ->where('estado', 'Aprobada')
+            ->orderByDesc('fecha_revision')
+            ->get()
+            ->groupBy('vehiculo_id');
+
         foreach ($unidades as &$unidad) {
             $unidad['pendientes_revision'] = $pendientes->where('vehiculo_id', $unidad['id'])->values();
             $unidad['rechazados'] = $rechazados->where('vehiculo_id', $unidad['id'])->values();
+
+            $ultima = $revisiones->get($unidad['id'])?->first();
+            $unidad['revision_tecnica'] = $ultima ? [
+                'fecha_revision' => $ultima->fecha_revision?->toDateString(),
+                'fecha_vencimiento' => $ultima->fecha_vencimiento?->toDateString(),
+                'estado' => $ultima->estado_vigencia,
+                'dias_para_vencer' => $ultima->dias_para_vencer,
+            ] : null;
         }
 
         return response()->json([
@@ -174,6 +190,8 @@ class SocioPortalController extends Controller
             'tipo_mantenimiento' => ['required', Rule::in($tiposValidos)],
             'fecha_mantenimiento' => 'required|date|before_or_equal:today|after_or_equal:' . now()->subYear()->toDateString(),
             'kilometraje_actual' => 'required|integer|min:1|max:9999999',
+            // Si fue por una falla o por mantenimiento planificado.
+            'naturaleza' => 'required|in:Preventivo,Correctivo',
             'observaciones' => 'required|string|max:800',
             'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
@@ -204,6 +222,7 @@ class SocioPortalController extends Controller
             'tipo_mantenimiento' => $request->tipo_mantenimiento,
             'fecha_mantenimiento' => $request->fecha_mantenimiento,
             'kilometraje_actual' => $request->kilometraje_actual,
+            'naturaleza' => $request->naturaleza,
             'observaciones' => $request->observaciones,
             'comprobante_ruta' => $ruta,
             'estado' => 'Completado',

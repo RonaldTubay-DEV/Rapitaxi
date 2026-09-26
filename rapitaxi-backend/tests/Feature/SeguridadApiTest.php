@@ -536,7 +536,7 @@ class SeguridadApiTest extends TestCase
     {
         return $cambios + [
             'vehiculo_id' => $vehiculoId, 'fecha_mantenimiento' => now()->toDateString(),
-            'tipo_mantenimiento' => 'Suspensión', 'estado' => 'Completado', 'kilometraje_actual' => 50000,
+            'tipo_mantenimiento' => 'Suspensión', 'estado' => 'Completado', 'naturaleza' => 'Preventivo', 'kilometraje_actual' => 50000,
             'observaciones' => 'Cambio de amortiguadores',
             'comprobante' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
         ];

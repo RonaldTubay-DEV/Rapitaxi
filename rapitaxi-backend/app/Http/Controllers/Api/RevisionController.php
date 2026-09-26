@@ -42,6 +42,9 @@ class RevisionController extends Controller
             'fecha_revision' => ['required', 'date', 'after_or_equal:2000-01-01', Rule::when(in_array($request->estado, ['Aprobada', 'Rechazada'], true), ['before_or_equal:today'])],
             'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
+            // La RTV aprobada trae su fecha de caducidad impresa: sin ella no se
+            // puede avisar al socio antes de que expire.
+            'fecha_vencimiento' => [Rule::when($request->estado === 'Aprobada', ['required', 'date', 'after:fecha_revision']), 'nullable', 'date'],
             'observaciones'  => 'nullable|string|max:500',
         ]);
 
@@ -75,6 +78,9 @@ class RevisionController extends Controller
             'fecha_revision' => ['required', 'date', 'after_or_equal:2000-01-01', Rule::when(in_array($request->estado, ['Aprobada', 'Rechazada'], true), ['before_or_equal:today'])],
             'tipo'           => 'required|string|max:80',
             'estado'         => 'required|in:Aprobada,Rechazada,Pendiente',
+            // La RTV aprobada trae su fecha de caducidad impresa: sin ella no se
+            // puede avisar al socio antes de que expire.
+            'fecha_vencimiento' => [Rule::when($request->estado === 'Aprobada', ['required', 'date', 'after:fecha_revision']), 'nullable', 'date'],
             'observaciones'  => 'nullable|string|max:500',
         ]);
 

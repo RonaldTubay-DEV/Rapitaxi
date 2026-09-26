@@ -37,7 +37,7 @@ const MisUnidadesScreen = () => {
   const [unidadActiva, setUnidadActiva] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-  const [formData, setFormData] = useState({ tipo_mantenimiento: '', fecha_mantenimiento: '', kilometraje_actual: '', observaciones: '' });
+  const [formData, setFormData] = useState({ tipo_mantenimiento: '', fecha_mantenimiento: '', kilometraje_actual: '', naturaleza: 'Preventivo', observaciones: '' });
   const [archivo, setArchivo] = useState(null);
 
   const cargarUnidades = () => apiClient.get('/mis-unidades')
@@ -58,6 +58,7 @@ const MisUnidadesScreen = () => {
       tipo_mantenimiento: tipoSugerido || tipos[0] || '',
       fecha_mantenimiento: new Date().toISOString().split('T')[0],
       kilometraje_actual: '',
+      naturaleza: 'Preventivo',
       observaciones: '',
     });
     setArchivo(null);
@@ -178,6 +179,31 @@ const MisUnidadesScreen = () => {
                   </span>
                 </div>
 
+                {/* Revisión técnica: el aviso llega antes de que caduque, no
+                    cuando el socio ya está circulando sin ella. */}
+                {unidad.revision_tecnica && unidad.revision_tecnica.estado !== 'Sin vigencia' && (() => {
+                  const rtv = unidad.revision_tecnica;
+                  const estilo = rtv.estado === 'Vencida'
+                    ? { caja: 'bg-red-50 border-red-100', texto: 'text-red-700', Icono: AlertTriangle }
+                    : rtv.estado === 'Por vencer'
+                      ? { caja: 'bg-amber-50 border-amber-100', texto: 'text-amber-700', Icono: Clock }
+                      : { caja: 'bg-green-50 border-green-100', texto: 'text-green-700', Icono: CheckCircle2 };
+
+                  return (
+                    <div className={`flex items-center gap-2 border-b px-5 py-3 ${estilo.caja}`}>
+                      <estilo.Icono className={`h-4 w-4 flex-shrink-0 ${estilo.texto}`} />
+                      <p className={`text-xs font-semibold ${estilo.texto}`}>
+                        Revisión técnica (RTV):{' '}
+                        {rtv.estado === 'Vencida'
+                          ? `vencida hace ${Math.abs(rtv.dias_para_vencer)} días`
+                          : rtv.estado === 'Por vencer'
+                            ? `vence en ${rtv.dias_para_vencer} días`
+                            : `vigente hasta ${formatearFecha(rtv.fecha_vencimiento)}`}
+                      </p>
+                    </div>
+                  );
+                })()}
+
                 <div className="divide-y divide-slate-50">
                   {unidad.mantenimientos.map((item) => {
                     const estilo = estiloDe(item.estado);
@@ -287,6 +313,17 @@ const MisUnidadesScreen = () => {
                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700 font-mono"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">¿Por qué se hizo?</label>
+                <select
+                  name="naturaleza" value={formData.naturaleza} onChange={handleInputChange} required
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700"
+                >
+                  <option value="Preventivo">Mantenimiento planificado</option>
+                  <option value="Correctivo">Se dañó algo (falla)</option>
+                </select>
               </div>
 
               <div>

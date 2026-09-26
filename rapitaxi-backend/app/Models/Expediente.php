@@ -34,7 +34,8 @@ class Expediente extends Model
         'cambio_socio' => ['etiqueta' => 'Resolución de cambio de socio', 'vence' => false, 'obligatorio' => false],
         'acciones' => ['etiqueta' => 'Certificado de acciones', 'vence' => false, 'obligatorio' => false],
         'licencia' => ['etiqueta' => 'Licencia de conducir', 'vence' => true, 'obligatorio' => false],
-        'seguro' => ['etiqueta' => 'Seguro / SOAT', 'vence' => true, 'obligatorio' => false],
+        'seguro' => ['etiqueta' => 'Póliza de seguro / SOAT', 'vence' => true, 'obligatorio' => false],
+        'infraccion' => ['etiqueta' => 'Récord de infracciones', 'vence' => false, 'obligatorio' => false],
         'otro' => ['etiqueta' => 'Otro documento', 'vence' => false, 'obligatorio' => false],
     ];
 

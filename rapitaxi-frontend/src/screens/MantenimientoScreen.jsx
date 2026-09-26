@@ -62,6 +62,7 @@ const MantenimientoScreen = () => {
     kilometraje_actual: '',
     proximo_mantenimiento_km: '',
     estado: 'En Proceso',
+    naturaleza: 'Preventivo',
     observaciones: '',
     detalle_1: '', 
     detalle_2: ''
@@ -814,7 +815,14 @@ const MantenimientoScreen = () => {
                   )}
                 </td>
                 <td className="p-4">
-                  <div className="font-semibold text-slate-800">{m.tipo_mantenimiento}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-800">{m.tipo_mantenimiento}</span>
+                    {m.naturaleza === 'Correctivo' && (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-700" title="Se hizo por una falla, no estaba planificado">
+                        Falla
+                      </span>
+                    )}
+                  </div>
                   {m.observaciones && <div className="text-[10px] text-slate-500 mt-1 line-clamp-2 max-w-xs">{m.observaciones}</div>}
                 </td>
                 <td className="p-4">
@@ -908,6 +916,16 @@ const MantenimientoScreen = () => {
                     <option value="En Proceso">🟡 En Proceso</option>
                     <option value="Programado">🔵 Programado</option>
                     <option value="Completado">🟢 Completado</option>
+                  </select>
+                </div>
+
+                {/* Preventivo vs correctivo: distinguirlos es lo que permite
+                    ver despues cuantas fallas imprevistas tuvo cada unidad. */}
+                <div>
+                  <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Tipo de intervención</label>
+                  <select name="naturaleza" value={formData.naturaleza} onChange={handleInputChange} className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-yellow-400 font-semibold text-slate-700">
+                    <option value="Preventivo">🛡️ Preventivo (planificado)</option>
+                    <option value="Correctivo">🔧 Correctivo (por una falla)</option>
                   </select>
                 </div>
                 

@@ -1,6 +1,6 @@
 # 07 · Pruebas automatizadas
 
-**100 pruebas · 427 verificaciones · ~15 segundos de ejecución**
+**107 pruebas · 468 verificaciones · ~15 segundos de ejecución**
 
 ---
 
@@ -31,7 +31,8 @@ tests/
 ├── Feature/
 │   ├── SeguridadApiTest.php        68 pruebas de acceso, datos, validación y paginación
 │   ├── PlanMantenimientoTest.php   19 pruebas del plan de mantenimiento
-│   └── ExpedienteClasificadoTest.php  13 pruebas de clasificación y vencimientos
+│   ├── ExpedienteClasificadoTest.php  13 pruebas de clasificación y vencimientos
+│   └── ObjetivosDelProyectoTest.php    7 pruebas de lo que promete el anteproyecto
 └── Unit/
     └── CedulaEcuatorianaTest.php   12 casos del algoritmo de cédula
 ```
@@ -141,6 +142,25 @@ Evita repetir el montaje en cada prueba:
 - El resumen dice qué obligatorios faltan por socio.
 - Un obligatorio **vencido** deja el expediente incompleto aunque el archivo exista.
 - Un socio no puede ver el catálogo ni el resumen.
+
+### Objetivos del proyecto
+
+Estas pruebas no verifican una pantalla ni un endpoint: verifican que el sistema
+cumpla lo que el anteproyecto de tesis promete. Nacieron de contrastar el
+documento contra el código y encontrar tres cosas que faltaban.
+
+- Un mantenimiento se registra como **preventivo o correctivo**, y sin indicarlo
+  se rechaza. El anteproyecto promete un *historial cronológico de fallas*, y eso
+  solo existe si se distingue el trabajo planificado del que nace de una avería.
+- El socio también indica desde el portal si su trabajo fue por una falla.
+- Una revisión **aprobada exige hasta cuándo vale**; sin fecha de vencimiento se
+  rechaza.
+- El socio ve en su portal cuándo vence la revisión técnica de **cada** unidad.
+- Una unidad sin revisión aprobada no reporta vigencia (no se inventa una fecha).
+- El expediente admite los documentos que plantea el proyecto: cédula,
+  habilitación, matrícula, licencia, póliza de seguro y récord de infracciones.
+- Una póliza de seguro avisa antes de expirar, como cualquier otro documento que
+  caduca.
 
 ### Paginación
 

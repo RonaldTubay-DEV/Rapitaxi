@@ -177,6 +177,7 @@ class PlanMantenimientoTest extends TestCase
             'tipo_mantenimiento' => 'Cambio de Aceite',
             'fecha_mantenimiento' => now()->toDateString(),
             'kilometraje_actual' => 60000,
+            'naturaleza' => 'Preventivo',
             'observaciones' => 'Cambio de aceite y filtros en taller del barrio',
             'comprobante' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
         ];
@@ -358,6 +359,7 @@ class PlanMantenimientoTest extends TestCase
         $this->api($this->tokenDe($this->crearUsuario('admin')))->post('/api/mantenimientos', [
             'vehiculo_id' => $vehiculo->id, 'fecha_mantenimiento' => now()->toDateString(),
             'tipo_mantenimiento' => 'Cambio de Aceite', 'estado' => 'Completado',
+            'naturaleza' => 'Preventivo',
             'kilometraje_actual' => 50000, 'observaciones' => 'Cambio de aceite',
             'proximo_mantenimiento_km' => 55000,
             'comprobante' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),

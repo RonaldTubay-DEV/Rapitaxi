@@ -243,7 +243,8 @@ de estos trabajos: cada socio paga los suyos. Lo que el sistema controla es
 
 #### Registrar un trabajo (Nuevo Ingreso)
 
-Elige la unidad, el tipo de trabajo, la fecha y el estado inicial:
+Elige la unidad, el tipo de trabajo, si fue **preventivo o correctivo**, la fecha
+y el estado inicial:
 
 - **Programado**: se hará más adelante.
 - **En Proceso**: está en el taller.
@@ -254,6 +255,9 @@ trabajo, descripción y el **respaldo** (factura, orden de taller o una foto).
 
 Reglas que el sistema hace cumplir:
 
+- Todo trabajo debe indicar si fue **Preventivo** (planificado, por plazo o
+  kilometraje) o **Correctivo** (para reparar una falla). De esa distinción sale
+  el historial de fallas de la unidad.
 - Un trabajo completado no puede tener fecha futura.
 - El kilometraje no puede ser menor al del último trabajo de esa unidad.
 - Un trabajo ya completado no se puede modificar ni eliminar.
@@ -280,11 +284,17 @@ Bitácora de revisiones técnicas vehiculares (RTV) y trámites con la ANT/GAD.
 Cada revisión tiene una unidad, una fecha, un tipo y un estado: **Aprobada**,
 **Rechazada** o **Pendiente**.
 
+Cuando la revisión se marca **Aprobada**, el sistema exige además **hasta cuándo
+vale**: la fecha de vencimiento que trae el certificado. Con ella el socio ve en
+su portal cuántos días le quedan, por cada unidad. Esa fecha debe ser posterior a
+la de la revisión.
+
 Una revisión Aprobada o Rechazada no puede tener fecha futura (ya ocurrió). Una
 Pendiente sí, porque puede estar agendada.
 
-> El Dashboard considera "al día" a una unidad con revisión **aprobada dentro de
-> los últimos 12 meses**.
+> El Dashboard todavía considera "al día" a una unidad con revisión **aprobada
+> dentro de los últimos 12 meses**, sin mirar la fecha de vencimiento registrada.
+> Queda anotado como pendiente en [09 - Estado y pendientes](09-estado-y-pendientes.md).
 
 ### 2.8 Aportaciones
 
@@ -414,6 +424,12 @@ color resume su situación:
 | **Sin registro** (ámbar) | Algún trabajo nunca se ha registrado |
 | **Vencido** (rojo) | Algún trabajo pasó su fecha |
 
+Si la unidad tiene una revisión técnica aprobada, la tarjeta muestra arriba un
+aviso propio: *"Revisión técnica (RTV): vence en 20 días"*, *"vencida hace 12
+días"* o *"vigente"*, con el mismo código de colores. Es independiente del plan
+de mantenimiento: una unidad puede estar al día con el taller y tener la RTV
+vencida.
+
 Dentro de cada tarjeta se detalla cada tipo de trabajo con su plazo en lenguaje
 claro: *"Vencido hace 32 días"*, *"Faltan 4 días"*, *"Nunca se ha registrado este
 trabajo"*, junto con la fecha del último y la del próximo.
@@ -422,8 +438,9 @@ trabajo"*, junto con la fecha del último y la del próximo.
 
 Con el botón **Registrar** el socio informa un trabajo ya realizado:
 
-- Tipo de trabajo, fecha (no futura, ni de hace más de un año), kilometraje,
-  descripción y el **respaldo**: factura, orden de taller o una foto.
+- Tipo de trabajo, si fue **preventivo o correctivo**, fecha (no futura, ni de
+  hace más de un año), kilometraje, descripción y el **respaldo**: factura, orden
+  de taller o una foto.
 
 El registro queda **Pendiente** hasta que el staff lo apruebe. Mientras tanto se
 muestra como "En revisión" y la unidad sigue contando como pendiente.

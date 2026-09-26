@@ -22,6 +22,7 @@ class Mantenimiento extends Model
         'comprobante_ruta',
         'mecanico',       // <-- Nuevo campo añadido
         'estado',         // <-- Sus valores cambiaron
+        'naturaleza',     // Preventivo (planificado) o Correctivo (por una falla)
         'observaciones',
         'revision_estado',
         'origen',

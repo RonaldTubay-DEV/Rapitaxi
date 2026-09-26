@@ -154,6 +154,7 @@ considerar al socio "Al día".
 | `comprobante_ruta` | varchar | sí | Respaldo del trabajo en R2 |
 | `mecanico` | varchar | sí | |
 | `estado` | varchar | no | `Programado` / `En Proceso` / `Completado` |
+| `naturaleza` | varchar | no | `Preventivo` (planificado) o `Correctivo` (por una falla) |
 | `observaciones` | text | sí | Detalle del trabajo |
 | `revision_estado` | varchar | no | `Aprobado` / `Pendiente` / `Rechazado`. Por defecto `Aprobado` |
 | `origen` | varchar | no | `staff` / `socio`. Por defecto `staff` |
@@ -183,6 +184,7 @@ cuenta para poner la unidad al día. Los que registra el staff nacen aprobados.
 | `fecha_revision` | date | no | No futura si está Aprobada o Rechazada |
 | `tipo` | varchar | no | Por defecto `RTV Manta` |
 | `estado` | varchar | no | `Aprobada` / `Rechazada` / `Pendiente` |
+| `fecha_vencimiento` | date | sí | **Obligatoria si está Aprobada.** Hasta cuándo vale la RTV |
 | `observaciones` | text | sí | |
 
 > **Advertencia:** esta tabla **no tiene borrado suave**. Eliminar una revisión la
@@ -215,7 +217,8 @@ real de la cooperativa:
 | `cambio_socio` — Resolución de cambio de socio | No | No |
 | `acciones` — Certificado de acciones | No | No |
 | `licencia` — Licencia de conducir | Sí | No |
-| `seguro` — Seguro / SOAT | Sí | No |
+| `seguro` — Póliza de seguro / SOAT | Sí | No |
+| `infraccion` — Récord de infracciones | No | No |
 | `otro` — Otro documento | No | No |
 
 Los tres obligatorios son los que aparecen en casi todas las carpetas físicas:

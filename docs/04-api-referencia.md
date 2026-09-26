@@ -185,8 +185,8 @@ La placa se convierte a mayúsculas y el color se fija en `Amarillo`.
 | PUT | `/mantenimientos/{id}/aprobar` | Confirmar el registro de un socio |
 | PUT | `/mantenimientos/{id}/rechazar` | Rechazar con `motivo_rechazo` |
 
-**Al crear**, exige `vehiculo_id`, `fecha_mantenimiento`, `tipo_mantenimiento` y
-`estado`. Si el estado es `Completado`, exige además: fecha no futura,
+**Al crear**, exige `vehiculo_id`, `fecha_mantenimiento`, `tipo_mantenimiento`,
+`naturaleza` (`Preventivo` o `Correctivo`) y `estado`. Si el estado es `Completado`, exige además: fecha no futura,
 `kilometraje_actual`, `observaciones` y `comprobante` (archivo). Para aceite,
 frenos y llantas exige también `proximo_mantenimiento_km` mayor al kilometraje.
 
@@ -196,6 +196,8 @@ Reglas adicionales:
 - Un mantenimiento `Completado` no se puede modificar ni eliminar.
 - El estado no retrocede de `En Proceso` a `Programado`.
 - `origen` y `revision_estado` se fuerzan en el servidor; mandarlos no tiene efecto.
+- `naturaleza` distingue el trabajo planificado del que nace de una falla. Los
+  correctivos son los que forman el historial cronológico de fallas de la unidad.
 
 **Aprobar / rechazar** solo funcionan sobre registros en `Pendiente`; si ya se
 revisó, devuelven 422.
@@ -211,6 +213,11 @@ revisó, devuelven 422.
 | DELETE | `/revisiones/{id}` |
 
 `fecha_revision` no puede ser futura si el estado es `Aprobada` o `Rechazada`.
+
+`fecha_vencimiento` es **obligatoria cuando el estado es `Aprobada`** y debe ser
+posterior a `fecha_revision`. Con ella el sistema calcula `estado_vigencia`
+(`Vigente`, `Por vencer` a 30 días o menos, `Vencida`, o `Sin vigencia` si la
+revisión no está aprobada) y `dias_para_vencer`, ambos incluidos en la respuesta.
 
 ### Aportaciones
 
@@ -427,6 +434,12 @@ Rechaza con 422 si ya existe una aportación vigente para ese mes.
       "marca": "KIA",
       "tipo_vehiculo": "Sedán",
       "resumen": "Vencido",
+      "revision_tecnica": {
+        "fecha_revision": "2025-10-15",
+        "fecha_vencimiento": "2026-10-15",
+        "estado": "Vigente",
+        "dias_para_vencer": 19
+      },
       "mantenimientos": [
         {
           "tipo": "Cambio de Aceite",
@@ -451,11 +464,15 @@ Vencido, Sin registro, Por vencer, Al día.
 
 `dias_restantes` negativo indica días de atraso.
 
+`revision_tecnica` es la última RTV **aprobada** de esa unidad, o `null` si no
+tiene ninguna. Su `estado` es `Vigente`, `Por vencer` o `Vencida`, y el portal la
+muestra como un aviso propio de cada unidad, separado del plan de mantenimiento.
+
 ### `POST /mis-unidades/{vehiculo}/mantenimientos`
 
 `multipart/form-data` con `tipo_mantenimiento` (de la lista configurada),
-`fecha_mantenimiento` (no futura ni de hace más de un año), `kilometraje_actual`,
-`observaciones` y `comprobante`.
+`naturaleza` (`Preventivo` o `Correctivo`), `fecha_mantenimiento` (no futura ni de
+hace más de un año), `kilometraje_actual`, `observaciones` y `comprobante`.
 
 - Devuelve **404** si la unidad no pertenece a ese socio.
 - Devuelve **422** si ya hay un registro pendiente del mismo tipo, o si el

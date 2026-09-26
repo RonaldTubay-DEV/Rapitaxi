@@ -44,6 +44,7 @@ const RevisionesScreen = () => {
   const [formData, setFormData] = useState({
     vehiculo_id: '',
     fecha_revision: fechaHoy,
+    fecha_vencimiento: '',
     tipo: 'RTV Manta',
     tipo_personalizado: '', // <-- Nuevo estado para guardar lo que escriba el usuario
     estado: 'Aprobada',
@@ -122,8 +123,8 @@ const RevisionesScreen = () => {
 
   const openCreateModal = () => {
     setFormData({ 
-      vehiculo_id: '', fecha_revision: fechaHoy, tipo: 'RTV Manta', 
-      tipo_personalizado: '', estado: 'Aprobada', observaciones: '' 
+      vehiculo_id: '', fecha_revision: fechaHoy, fecha_vencimiento: '', tipo: 'RTV Manta',
+      tipo_personalizado: '', estado: 'Aprobada', observaciones: ''
     });
     setEditingId(null);
     setFormError('');
@@ -137,6 +138,7 @@ const RevisionesScreen = () => {
     setFormData({
       vehiculo_id: rev.vehiculo_id,
       fecha_revision: rev.fecha_revision,
+      fecha_vencimiento: rev.fecha_vencimiento || '',
       tipo: esTramiteFijo ? rev.tipo : 'Otro', // Si no está en la lista, marcamos "Otro"
       tipo_personalizado: esTramiteFijo ? '' : rev.tipo, // Y ponemos el texto en la cajita
       estado: rev.estado,
@@ -338,6 +340,20 @@ const RevisionesScreen = () => {
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Fecha del Trámite</label>
                     <input type="date" name="fecha_revision" value={formData.fecha_revision} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400" />
+
+                    {/* Sin esta fecha no se puede avisar al socio antes de que
+                        caduque la revisión. Solo aplica a las aprobadas. */}
+                    {formData.estado === 'Aprobada' && (
+                      <div className="mt-4">
+                        <label className="block text-sm font-semibold text-slate-800 mb-1">Válida hasta</label>
+                        <input
+                          type="date" name="fecha_vencimiento" value={formData.fecha_vencimiento}
+                          onChange={handleInputChange} required min={formData.fecha_revision}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                        />
+                        <p className="text-xs text-slate-400 mt-1">El socio verá el aviso 30 días antes.</p>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Selector y campo dinámico */}

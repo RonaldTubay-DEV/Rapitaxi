@@ -19,7 +19,7 @@ Incluye además un portal donde cada socio consulta y gestiona su propia informa
 | [04 - Referencia de la API](04-api-referencia.md) | Los 63 endpoints, sus parámetros y permisos | Desarrolladores |
 | [05 - Seguridad](05-seguridad.md) | Autenticación, roles, validaciones, protección de datos personales | Desarrolladores, tribunal |
 | [06 - Instalación y despliegue](06-instalacion-y-despliegue.md) | Cómo levantarlo en local y cómo se publica en producción | Desarrolladores |
-| [07 - Pruebas automatizadas](07-pruebas.md) | Qué cubren las 100 pruebas y cómo ejecutarlas | Desarrolladores, tribunal |
+| [07 - Pruebas automatizadas](07-pruebas.md) | Qué cubren las 107 pruebas y cómo ejecutarlas | Desarrolladores, tribunal |
 | [08 - Reglas de negocio](08-reglas-de-negocio.md) | Las decisiones del dominio que el código hace cumplir | Todos |
 | [09 - Estado actual y pendientes](09-estado-y-pendientes.md) | Qué está terminado, qué falta, deuda técnica conocida | Desarrolladores, tribunal |
 | [10 - Checklist de escalabilidad](10-checklist-escalabilidad.md) | Qué falta para crecer, con mediciones reales y orden sugerido | Desarrolladores |
@@ -75,8 +75,8 @@ automatiza el control que antes se llevaba a mano.
 | Pantallas del panel administrativo | 12 |
 | Pantallas del portal del socio | 3 |
 | Roles | 3 |
-| Pruebas automatizadas | 100 (427 verificaciones) |
-| Migraciones | 32 |
+| Pruebas automatizadas | 107 (468 verificaciones) |
+| Migraciones | 33 |
 
 ---
 

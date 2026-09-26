@@ -118,6 +118,9 @@ class MantenimientoController extends Controller
             'kilometraje_actual'       => 'nullable|integer|min:0|max:9999999',
             'proximo_mantenimiento_km' => 'nullable|integer|min:0|max:9999999',
             'estado'                   => 'required|in:Completado,En Proceso,Programado',
+            // Preventivo: planificado por frecuencia. Correctivo: por una falla.
+            // Distinguirlos es lo que permite ver el historial de fallas de una unidad.
+            'naturaleza'               => 'required|in:Preventivo,Correctivo',
             'observaciones'            => 'nullable|string|max:800',
             'comprobante'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
