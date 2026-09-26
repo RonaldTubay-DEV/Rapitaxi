@@ -1,6 +1,6 @@
 # 07 · Pruebas automatizadas
 
-**87 pruebas · 365 verificaciones · ~14 segundos de ejecución**
+**100 pruebas · 427 verificaciones · ~15 segundos de ejecución**
 
 ---
 
@@ -30,7 +30,8 @@ tests/
 │   └── CreaEscenarioApi.php        Utilidades compartidas
 ├── Feature/
 │   ├── SeguridadApiTest.php        68 pruebas de acceso, datos, validación y paginación
-│   └── PlanMantenimientoTest.php   19 pruebas del plan de mantenimiento
+│   ├── PlanMantenimientoTest.php   19 pruebas del plan de mantenimiento
+│   └── ExpedienteClasificadoTest.php  13 pruebas de clasificación y vencimientos
 └── Unit/
     └── CedulaEcuatorianaTest.php   12 casos del algoritmo de cédula
 ```
@@ -128,6 +129,18 @@ Evita repetir el montaje en cada prueba:
 - Lo que registra el staff no pasa por revisión.
 - Las unidades siguen visibles aunque no haya frecuencias configuradas.
 - El seeder deja las frecuencias listas sin pisar lo que el admin cambió.
+
+### Expedientes clasificados
+
+- El catálogo declara qué tipos existen, cuáles caducan y cuáles son obligatorios.
+- Subir un documento exige clasificarlo; un tipo inventado se rechaza.
+- Los tipos que caducan exigen fecha de vencimiento; los que no, se aceptan sin ella.
+- Un documento no puede vencer antes de emitirse.
+- El estado de vigencia se calcula bien en los cuatro casos (vigente, por vencer,
+  vencido, sin vencimiento).
+- El resumen dice qué obligatorios faltan por socio.
+- Un obligatorio **vencido** deja el expediente incompleto aunque el archivo exista.
+- Un socio no puede ver el catálogo ni el resumen.
 
 ### Paginación
 

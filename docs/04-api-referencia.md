@@ -230,12 +230,45 @@ para el mismo mes y año salvo que la anterior esté `Rechazado`.
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | `/expedientes` | Acepta `?socio_id=` |
+| GET | `/expedientes` | Acepta `?socio_id=` y `?tipo=` |
+| GET | `/expedientes/catalogo` | Tipos de documento, cuáles caducan y cuáles son obligatorios |
+| GET | `/expedientes/resumen` | Completitud por socio. Acepta `?socio_id=` |
 | POST | `/expedientes` | Subir (`multipart/form-data`) |
 | DELETE | `/expedientes/{id}` | Eliminar (también borra el archivo en R2) |
 | GET | `/expedientes/{id}/download` | Enlace temporal de 5 minutos |
 
-Archivo: PDF, JPG o PNG, máximo 5 MB.
+**Al subir:**
+
+| Campo | Regla |
+|---|---|
+| `socio_id` | Obligatorio |
+| `nombre_documento` | Obligatorio, hasta 80 |
+| `tipo_expediente` | **Obligatorio.** Del catálogo |
+| `fecha_vencimiento` | **Obligatoria** si el tipo caduca; debe ser futura y posterior a la emisión |
+| `numero_documento` | Opcional, hasta 60 |
+| `fecha_emision` | Opcional, no futura |
+| `archivo` | PDF, JPG o PNG, máximo 5 MB |
+
+Cada documento devuelve además `tipo_etiqueta`, `estado_vigencia` (`Vigente`,
+`Por vencer`, `Vencido`, `Sin vencimiento`) y `dias_para_vencer` (negativo si ya
+caducó).
+
+**`GET /expedientes/resumen`** responde por cada socio: cuántos obligatorios tiene
+de cuántos, qué tipos le **faltan**, cuáles están **vencidos** o **por vencer**, y
+si el expediente está `completo`.
+
+```json
+{
+  "socios": [{
+    "socio_id": 1, "nombre": "Isidro Baque",
+    "obligatorios_presentes": 1, "obligatorios_totales": 3,
+    "faltantes": [{ "tipo": "habilitacion", "etiqueta": "Resolución de habilitación" }],
+    "vencidos": [{ "tipo": "cedula", "dias_para_vencer": -60 }],
+    "por_vencer": [], "completo": false
+  }],
+  "obligatorios": ["cedula", "habilitacion", "matricula"]
+}
+```
 
 ### Libros contables
 

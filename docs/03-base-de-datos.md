@@ -195,8 +195,39 @@ cuenta para poner la unidad al día. Los que registra el staff nacen aprobados.
 | `id` | bigint | no | |
 | `socio_id` | bigint | no | FK a `socios`, cascade |
 | `nombre_documento` | varchar | no | Ej. "Matrícula 2026" |
-| `tipo_documento` | varchar | no | Extensión real del archivo |
+| `tipo_documento` | varchar | no | Extensión real del archivo (pdf, jpg) |
+| `tipo_expediente` | varchar | no | **Qué documento es.** Por defecto `otro` |
+| `numero_documento` | varchar | sí | Ej. número de resolución |
+| `fecha_emision` | date | sí | |
+| `fecha_vencimiento` | date | sí | Obligatoria en los tipos que caducan |
 | `ruta_archivo` | varchar | no | Ruta en R2 |
+
+**Catálogo de tipos** (`App\Models\Expediente::TIPOS`), tomado del archivo físico
+real de la cooperativa:
+
+| Tipo | Caduca | Obligatorio |
+|---|---|---|
+| `cedula` — Cédula de identidad | Sí | **Sí** |
+| `habilitacion` — Resolución de habilitación | Sí | **Sí** |
+| `matricula` — Matrícula del vehículo | Sí | **Sí** |
+| `ruc` — Certificado del SRI | No | No |
+| `cesion` — Carta de cesión de acciones | No | No |
+| `cambio_socio` — Resolución de cambio de socio | No | No |
+| `acciones` — Certificado de acciones | No | No |
+| `licencia` — Licencia de conducir | Sí | No |
+| `seguro` — Seguro / SOAT | Sí | No |
+| `otro` — Otro documento | No | No |
+
+Los tres obligatorios son los que aparecen en casi todas las carpetas físicas:
+habilitación (79 documentos), cédula (74) y matrícula (47). La cesión es frecuente
+(56) pero solo existe si hubo traspaso, así que no puede exigirse a todos.
+
+**Estado de vigencia** (calculado, no almacenado): `Vigente`, `Por vencer` (dentro
+de 30 días), `Vencido` o `Sin vencimiento`.
+
+> **Nota:** el catálogo vive en una constante del modelo. Para revender el sistema
+> a cooperativas con otros requisitos documentales conviene moverlo a una tabla
+> configurable, igual que se hizo con las frecuencias de mantenimiento.
 
 > **Advertencia:** sin borrado suave. Además, al eliminar un socio en firme, la
 > cascada borra sus expedientes de la base, pero **los archivos quedan en R2**.

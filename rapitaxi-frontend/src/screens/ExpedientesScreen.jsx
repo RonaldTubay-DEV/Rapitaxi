@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, FolderOpen, Search, FileText,
-  Upload, Trash2, Loader2, AlertCircle, X, ExternalLink
+  Upload, Trash2, Loader2, AlertCircle, X, ExternalLink,
+  CheckCircle2, Clock, CalendarX2
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
@@ -21,8 +22,49 @@ const ExpedientesScreen = () => {
   
   // Estado para el Modal de Subida
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [fileData, setFileData] = useState({ nombre: '', archivo: null });
+  const [fileData, setFileData] = useState({
+    nombre: '', archivo: null, tipo_expediente: '', numero_documento: '',
+    fecha_emision: '', fecha_vencimiento: '',
+  });
   const [uploadError, setUploadError] = useState('');
+
+  // Catalogo de tipos de documento y estado de completitud por socio: lo que
+  // convierte el archivo digital en un expediente que se puede controlar.
+  const [catalogo, setCatalogo] = useState([]);
+  const [resumenPorSocio, setResumenPorSocio] = useState({});
+
+  const tipoSeleccionado = catalogo.find((t) => t.valor === fileData.tipo_expediente);
+  const resumenActual = selectedSocio ? resumenPorSocio[selectedSocio.id] : null;
+
+  const ESTILO_VIGENCIA = {
+    'Vigente': { chip: 'bg-green-100 text-green-700', icono: CheckCircle2 },
+    'Por vencer': { chip: 'bg-amber-100 text-amber-700', icono: Clock },
+    'Vencido': { chip: 'bg-red-100 text-red-700', icono: CalendarX2 },
+  };
+
+  const cargarResumen = () => {
+    const token = localStorage.getItem('auth_token');
+    return fetch(`${API_URL}/expedientes/resumen`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    })
+      .then((r) => (r.ok ? r.json() : { socios: [] }))
+      .then((data) => {
+        setResumenPorSocio(Object.fromEntries((data.socios ?? []).map((s) => [s.socio_id, s])));
+      })
+      .catch(() => setResumenPorSocio({}));
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    fetch(`${API_URL}/expedientes/catalogo`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+    })
+      .then((r) => (r.ok ? r.json() : { tipos: [] }))
+      .then((data) => setCatalogo(data.tipos ?? []))
+      .catch(() => setCatalogo([]));
+
+    cargarResumen();
+  }, []);
 
   // ==========================================
   // CARGAR SOCIOS
@@ -77,10 +119,19 @@ const ExpedientesScreen = () => {
     setUploadError('');
 
     // FormData es OBLIGATORIO para enviar archivos físicos
+    if (!fileData.tipo_expediente) return setUploadError('Debe indicar qué documento es.');
+    if (tipoSeleccionado?.vence && !fileData.fecha_vencimiento) {
+      return setUploadError('Este documento caduca: indica su fecha de vencimiento.');
+    }
+
     const formData = new FormData();
     formData.append('socio_id', selectedSocio.id);
     formData.append('nombre_documento', fileData.nombre);
+    formData.append('tipo_expediente', fileData.tipo_expediente);
     formData.append('archivo', fileData.archivo);
+    if (fileData.numero_documento) formData.append('numero_documento', fileData.numero_documento);
+    if (fileData.fecha_emision) formData.append('fecha_emision', fileData.fecha_emision);
+    if (fileData.fecha_vencimiento) formData.append('fecha_vencimiento', fileData.fecha_vencimiento);
 
     try {
       const token = localStorage.getItem('auth_token');
@@ -94,10 +145,13 @@ const ExpedientesScreen = () => {
         const data = await response.json();
         setExpedientes([data.expediente, ...expedientes]);
         setIsModalOpen(false);
-        setFileData({ nombre: '', archivo: null });
+        setFileData({ nombre: '', archivo: null, tipo_expediente: '', numero_documento: '', fecha_emision: '', fecha_vencimiento: '' });
+        cargarResumen();
         showSuccessToast('Documento subido exitosamente.');
       } else {
-        setUploadError('Error al subir el archivo. Intente con un formato válido.');
+        const error = await response.json().catch(() => null);
+        const primerError = error?.errors ? Object.values(error.errors)[0][0] : null;
+        setUploadError(primerError || error?.message || 'Error al subir el archivo. Intente con un formato válido.');
       }
     } catch (err) {
       setUploadError('Error de conexión.');
@@ -174,10 +228,25 @@ const ExpedientesScreen = () => {
               <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center font-bold text-slate-500 mr-3">
                 {socio.vehiculos?.[0]?.numero_vehiculo ?? ''}
               </div>
-              <div className="overflow-hidden">
+              <div className="overflow-hidden flex-1">
                 <p className="font-semibold text-slate-800 text-sm truncate">{socio.nombre}</p>
                 <p className="text-xs text-slate-400">{socio.vehiculos?.[0]?.placa ?? ''}</p>
               </div>
+              {/* De un vistazo: a quien le falta documentacion obligatoria */}
+              {resumenPorSocio[socio.id] && (
+                <span
+                  title={resumenPorSocio[socio.id].completo
+                    ? 'Expediente completo'
+                    : `Faltan ${resumenPorSocio[socio.id].faltantes.length} documentos obligatorios`}
+                  className={`ml-2 flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${
+                    resumenPorSocio[socio.id].completo
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}
+                >
+                  {resumenPorSocio[socio.id].obligatorios_presentes}/{resumenPorSocio[socio.id].obligatorios_totales}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -203,6 +272,37 @@ const ExpedientesScreen = () => {
               </button>
             </header>
 
+            {/* Que le falta a este expediente: la pregunta que antes habia que
+                responder hojeando la carpeta fisica. */}
+            {resumenActual && !resumenActual.completo && (
+              <div className="border-b border-red-100 bg-red-50 px-4 py-3 sm:px-6 lg:px-8">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-500" />
+                  {resumenActual.faltantes.length > 0 && (
+                    <span className="font-semibold text-red-800">
+                      Faltan: {resumenActual.faltantes.map((f) => f.etiqueta).join(', ')}.
+                    </span>
+                  )}
+                  {resumenActual.vencidos.length > 0 && (
+                    <span className="font-semibold text-red-800">
+                      Vencidos: {resumenActual.vencidos.map((v) => v.etiqueta).join(', ')}.
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {resumenActual?.completo && resumenActual.por_vencer.length > 0 && (
+              <div className="border-b border-amber-100 bg-amber-50 px-4 py-3 sm:px-6 lg:px-8">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 flex-shrink-0 text-amber-500" />
+                  <span className="font-semibold text-amber-800">
+                    Por vencer: {resumenActual.por_vencer.map((d) => `${d.etiqueta} (${d.dias_para_vencer} días)`).join(', ')}.
+                  </span>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center h-full text-slate-400">
@@ -226,7 +326,25 @@ const ExpedientesScreen = () => {
                           <FileText className="w-12 h-12 text-blue-500" />
                         )}
                       </div>
-                      <p className="font-bold text-slate-800 text-xs truncate mb-1">{doc.nombre_documento}</p>
+                      <p className="font-bold text-slate-800 text-xs truncate mb-0.5">{doc.nombre_documento}</p>
+                      <p className="text-[10px] text-slate-500 font-semibold truncate mb-1.5">{doc.tipo_etiqueta}</p>
+
+                      {/* Vigencia: lo que permite saber que documentos caducaron */}
+                      {doc.estado_vigencia !== 'Sin vencimiento' && (() => {
+                        const estilo = ESTILO_VIGENCIA[doc.estado_vigencia] ?? ESTILO_VIGENCIA['Vigente'];
+                        const Icono = estilo.icono;
+                        return (
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold mb-1 ${estilo.chip}`}>
+                            <Icono className="w-3 h-3 mr-1" />
+                            {doc.estado_vigencia === 'Vencido'
+                              ? `Venció hace ${Math.abs(doc.dias_para_vencer)} d`
+                              : doc.estado_vigencia === 'Por vencer'
+                                ? `Vence en ${doc.dias_para_vencer} d`
+                                : 'Vigente'}
+                          </span>
+                        );
+                      })()}
+
                       <p className="text-[10px] text-slate-400 uppercase font-bold">{doc.tipo_documento} • {new Date(doc.created_at).toLocaleDateString()}</p>
                       
                       {/* Acciones flotantes */}
@@ -273,6 +391,58 @@ const ExpedientesScreen = () => {
                   placeholder="Ej: Matrícula 2026" className="w-full px-4 py-3 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-yellow-400"
                 />
               </div>
+
+              {/* Clasificar el documento es lo que permite despues saber que
+                  falta en un expediente y que esta por caducar. */}
+              <div>
+                <label className="block text-sm font-bold mb-2">¿Qué documento es?</label>
+                <select
+                  required value={fileData.tipo_expediente}
+                  onChange={(e) => setFileData({ ...fileData, tipo_expediente: e.target.value, fecha_vencimiento: '' })}
+                  className="w-full px-4 py-3 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-yellow-400"
+                >
+                  <option value="" disabled>-- Selecciona el tipo --</option>
+                  {catalogo.map((t) => (
+                    <option key={t.valor} value={t.valor}>
+                      {t.etiqueta}{t.obligatorio ? ' (obligatorio)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-2">N° de documento <span className="font-normal text-slate-400">(opcional)</span></label>
+                  <input
+                    type="text" maxLength="60" value={fileData.numero_documento}
+                    onChange={(e) => setFileData({ ...fileData, numero_documento: limitText(e.target.value, 60) })}
+                    placeholder="Ej: 011-HV-013-DTTTSV-2025"
+                    className="w-full px-4 py-3 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-yellow-400 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-2">Fecha de emisión <span className="font-normal text-slate-400">(opcional)</span></label>
+                  <input
+                    type="date" max={new Date().toISOString().split('T')[0]} value={fileData.fecha_emision}
+                    onChange={(e) => setFileData({ ...fileData, fecha_emision: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-yellow-400 text-sm"
+                  />
+                </div>
+              </div>
+
+              {tipoSeleccionado?.vence && (
+                <div>
+                  <label className="block text-sm font-bold mb-2">Fecha de vencimiento</label>
+                  <input
+                    type="date" required min={new Date().toISOString().split('T')[0]} value={fileData.fecha_vencimiento}
+                    onChange={(e) => setFileData({ ...fileData, fecha_vencimiento: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-100 rounded-xl border-none focus:ring-2 focus:ring-yellow-400"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">
+                    Este documento caduca. El sistema avisará 30 días antes del vencimiento.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-bold mb-2">Seleccionar Archivo (PDF o Imagen)</label>

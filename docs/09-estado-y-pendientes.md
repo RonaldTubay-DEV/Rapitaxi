@@ -12,7 +12,7 @@ Inventario honesto de qué está terminado, qué quedó a medias y qué falta.
 | Gestión de socios | ✅ Completo | Alta, baja con motivo, reactivación con historial |
 | Cuentas del portal | ✅ Completo | Creación, activación y desactivación |
 | Vehículos | ✅ Completo | Con tipo y combustible según documentos oficiales |
-| Expedientes | ✅ Completo | Subida y consulta con enlaces temporales |
+| Expedientes | ✅ Completo | Clasificados por tipo, con control de vencimientos y completitud |
 | Aportaciones | ✅ Completo | Pago manual y comprobante con aprobación |
 | Mantenimiento | ✅ Completo | Registro, plan de frecuencias y aprobación |
 | Revisiones (RTV) | ✅ Completo | |
@@ -195,6 +195,12 @@ que decidir qué se digitaliza y qué no.
 ---
 
 ## 6. Mejoras sugeridas
+
+> **Expedientes (25/09/2026).** El módulo dejó de ser un repositorio de archivos:
+> cada documento se clasifica según el catálogo real de la cooperativa, los que
+> caducan llevan control de vencimiento y el sistema informa qué falta en cada
+> expediente. Es el eje que da nombre al proyecto y era el menos desarrollado.
+> Queda pendiente el historial de traspasos de acciones.
 
 > **Rendimiento (23/09/2026).** Se corrigieron tres problemas estructurales de
 > consultas. Medido con 202 socios y 4.800 aportaciones: `/socios` pasó de 4.806 a

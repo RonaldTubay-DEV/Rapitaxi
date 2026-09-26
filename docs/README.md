@@ -16,10 +16,10 @@ Incluye además un portal donde cada socio consulta y gestiona su propia informa
 | [01 - Manual de usuario](01-manual-de-usuario.md) | Cómo usar el sistema, pantalla por pantalla, según el rol | Personal de la cooperativa y socios |
 | [02 - Arquitectura](02-arquitectura.md) | Tecnologías, estructura de carpetas, cómo se comunican las partes | Desarrolladores, tribunal |
 | [03 - Base de datos](03-base-de-datos.md) | Todas las tablas, columnas, relaciones e índices | Desarrolladores, tribunal |
-| [04 - Referencia de la API](04-api-referencia.md) | Los 61 endpoints, sus parámetros y permisos | Desarrolladores |
+| [04 - Referencia de la API](04-api-referencia.md) | Los 63 endpoints, sus parámetros y permisos | Desarrolladores |
 | [05 - Seguridad](05-seguridad.md) | Autenticación, roles, validaciones, protección de datos personales | Desarrolladores, tribunal |
 | [06 - Instalación y despliegue](06-instalacion-y-despliegue.md) | Cómo levantarlo en local y cómo se publica en producción | Desarrolladores |
-| [07 - Pruebas automatizadas](07-pruebas.md) | Qué cubren las 87 pruebas y cómo ejecutarlas | Desarrolladores, tribunal |
+| [07 - Pruebas automatizadas](07-pruebas.md) | Qué cubren las 100 pruebas y cómo ejecutarlas | Desarrolladores, tribunal |
 | [08 - Reglas de negocio](08-reglas-de-negocio.md) | Las decisiones del dominio que el código hace cumplir | Todos |
 | [09 - Estado actual y pendientes](09-estado-y-pendientes.md) | Qué está terminado, qué falta, deuda técnica conocida | Desarrolladores, tribunal |
 | [10 - Checklist de escalabilidad](10-checklist-escalabilidad.md) | Qué falta para crecer, con mediciones reales y orden sugerido | Desarrolladores |
@@ -70,13 +70,13 @@ automatiza el control que antes se llevaba a mano.
 
 | | |
 |---|---|
-| Endpoints de la API | 61 |
+| Endpoints de la API | 63 |
 | Tablas en la base de datos | 22 (13 del negocio, 9 de infraestructura de Laravel) |
 | Pantallas del panel administrativo | 12 |
 | Pantallas del portal del socio | 3 |
 | Roles | 3 |
-| Pruebas automatizadas | 87 (365 verificaciones) |
-| Migraciones | 31 |
+| Pruebas automatizadas | 100 (427 verificaciones) |
+| Migraciones | 32 |
 
 ---
 

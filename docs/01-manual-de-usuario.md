@@ -161,6 +161,48 @@ La pantalla tiene dos columnas que se desplazan por separado:
 
 Se aceptan archivos **PDF, JPG y PNG de hasta 5 MB**.
 
+#### Qué documento es cada archivo
+
+Al subir un documento hay que indicar **qué es**: cédula, resolución de
+habilitación, matrícula, carta de cesión, certificado del SRI, etc. No es un
+trámite burocrático: es lo que permite al sistema saber qué le falta a cada
+expediente y qué está por caducar.
+
+Si el documento caduca (cédula, habilitación, matrícula, licencia, seguro), el
+formulario pide además su **fecha de vencimiento**. Opcionalmente puedes registrar
+el número de documento y la fecha de emisión.
+
+#### Control de completitud
+
+Junto a cada socio de la lista aparece un contador como **2/3**: cuántos de los
+tres documentos obligatorios tiene.
+
+| Documento obligatorio | Por qué |
+|---|---|
+| Cédula de identidad | Identifica al socio |
+| Resolución de habilitación | Autoriza la unidad a operar |
+| Matrícula del vehículo | Acredita el vehículo |
+
+- **Verde (3/3)**: expediente completo y al día.
+- **Rojo**: falta algún documento obligatorio, o alguno está vencido.
+
+Al abrir el expediente de un socio incompleto, una franja roja dice exactamente
+qué falta: *"Faltan: Resolución de habilitación, Matrícula del vehículo."*
+
+#### Vencimientos
+
+Cada documento que caduca muestra su estado:
+
+| Etiqueta | Significado |
+|---|---|
+| **Vigente** (verde) | Le queda más de un mes |
+| **Vence en N d** (ámbar) | Caduca dentro de los próximos 30 días |
+| **Venció hace N d** (rojo) | Ya caducó |
+
+Si el expediente está completo pero algo está por vencer, aparece una franja ámbar
+avisándolo. Un documento obligatorio **vencido** deja el expediente como incompleto,
+aunque el archivo esté subido: existe, pero ya no sirve.
+
 Para ver un documento, pulsa sobre él: se abre en una pestaña nueva mediante un
 enlace temporal que **caduca a los 5 minutos**. Ese enlace no se puede compartir
 con alguien de fuera, porque deja de funcionar.

@@ -42,6 +42,10 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:api'])->group(function ()
         Route::put('aportaciones/{id}/aprobar', [AportacionController::class, 'aprobar']);
         Route::put('aportaciones/{id}/rechazar', [AportacionController::class, 'rechazar']);
         Route::get('aportaciones/{id}/comprobante', [AportacionController::class, 'comprobante']);
+        // Antes del apiResource: si no, "catalogo" y "resumen" se toman como
+        // un {expediente} y terminan en el metodo equivocado.
+        Route::get('expedientes/catalogo', [ExpedienteController::class, 'catalogo']);
+        Route::get('expedientes/resumen', [ExpedienteController::class, 'resumen']);
         Route::apiResource('expedientes', ExpedienteController::class)->only(['index', 'store', 'destroy']);
         Route::get('expedientes/{id}/download', [ExpedienteController::class, 'download']);
         Route::apiResource('vehiculos', VehiculoController::class);
