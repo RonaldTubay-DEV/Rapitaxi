@@ -48,6 +48,8 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:api'])->group(function ()
         Route::apiResource('revisiones', RevisionController::class);
         Route::apiResource('mantenimientos', MantenimientoController::class)->only(['index', 'store', 'update', 'destroy']);
         Route::get('mantenimientos/{id}/comprobante', [MantenimientoController::class, 'download']);
+        Route::put('mantenimientos/{id}/aprobar', [MantenimientoController::class, 'aprobar']);
+        Route::put('mantenimientos/{id}/rechazar', [MantenimientoController::class, 'rechazar']);
         Route::apiResource('libros-contables', LibroContableController::class)->only(['index', 'store', 'destroy']);
         Route::get('libros-contables/{id}/download', [LibroContableController::class, 'download']);
 
@@ -78,5 +80,7 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:api'])->group(function ()
         Route::put('mi-perfil', [SocioPortalController::class, 'actualizarPerfil']);
         Route::get('mis-aportaciones', [SocioPortalController::class, 'misAportaciones']);
         Route::post('mis-aportaciones', [SocioPortalController::class, 'subirComprobante']);
+        Route::get('mis-unidades', [SocioPortalController::class, 'misUnidades']);
+        Route::post('mis-unidades/{vehiculo}/mantenimientos', [SocioPortalController::class, 'registrarMantenimiento']);
     });
 });

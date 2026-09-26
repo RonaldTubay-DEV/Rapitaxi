@@ -12,6 +12,9 @@ class AportacionController extends Controller
 {
     // 1. Obtener todos los Aportacions (incluyendo la información del socio)
     // Admite ?estado=Pendiente para la bandeja de comprobantes por revisar.
+    // Paginado: esta tabla crece sin techo (cada socio suma 12 filas al año).
+    // El filtro y la busqueda van en el servidor porque filtrar en el navegador
+    // solo alcanzaria a la pagina que se esta viendo.
     public function index(Request $request)
     {
         $query = Aportacion::with('socio')->orderBy('id', 'desc');
@@ -20,7 +23,20 @@ class AportacionController extends Controller
             $query->where('estado', $request->estado);
         }
 
-        return response()->json($query->get(), 200);
+        if ($request->filled('search')) {
+            $termino = '%' . mb_strtolower($request->search) . '%';
+            $query->whereHas('socio', fn ($q) => $q
+                ->whereRaw('LOWER(nombre) LIKE ?', [$termino])
+                ->orWhereRaw('LOWER(cedula) LIKE ?', [$termino]));
+        }
+
+        return response()->json($query->paginate($this->porPagina($request)), 200);
+    }
+
+    /** Entre 1 y 100 por pagina: un tope evita que alguien pida la tabla entera. */
+    private function porPagina(Request $request): int
+    {
+        return min(max((int) $request->input('per_page', 25), 1), 100);
     }
 
     // 2. Registrar un nuevo Aportacion (uso interno: admin/operador, queda

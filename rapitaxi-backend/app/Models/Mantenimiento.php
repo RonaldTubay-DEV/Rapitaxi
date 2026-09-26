@@ -19,12 +19,28 @@ class Mantenimiento extends Model
         'tipo_mantenimiento',
         'kilometraje_actual',
         'proximo_mantenimiento_km',
-        'costo',
         'comprobante_ruta',
         'mecanico',       // <-- Nuevo campo añadido
         'estado',         // <-- Sus valores cambiaron
         'observaciones',
+        'revision_estado',
+        'origen',
+        'motivo_rechazo',
+        'revisado_por',
+        'revisado_en',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'revisado_en' => 'datetime',
+        ];
+    }
+
+    public function revisadoPor()
+    {
+        return $this->belongsTo(User::class, 'revisado_por');
+    }
 
     public function vehiculo()
     {

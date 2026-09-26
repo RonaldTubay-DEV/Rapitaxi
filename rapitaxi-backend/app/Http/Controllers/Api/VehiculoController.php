@@ -10,6 +10,11 @@ use Illuminate\Validation\Rule;
 
 class VehiculoController extends Controller
 {
+    // Igual a como la ANT/GAD clasifica "TIPO" en la resolucion de habilitacion.
+    private const TIPOS_VEHICULO = ['Sedán', 'Hatchback', 'SUV', 'Station Wagon', 'Furgoneta', 'Pickup', 'Van'];
+
+    private const COMBUSTIBLES = ['Gasolina', 'Diesel', 'GLP', 'Eléctrico', 'Híbrido'];
+
     // 1. Listar todos los vehículos con los datos de su dueño
     public function index()
     {
@@ -29,7 +34,8 @@ class VehiculoController extends Controller
             'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/', Rule::unique('vehiculos', 'numero_vehiculo')->whereNull('deleted_at')],
             'placa'            => ['required', 'regex:/^[A-Z]{3}-[0-9]{4}$/', Rule::unique('vehiculos', 'placa')->whereNull('deleted_at')],
             'marca'            => 'required|string|max:50',
-            'modelo'           => 'required|string|max:50',
+            'tipo_vehiculo'    => ['required', Rule::in(self::TIPOS_VEHICULO)],
+            'combustible'      => ['required', Rule::in(self::COMBUSTIBLES)],
             'anio_fabricacion' => 'required|integer|min:1980|max:' . (date('Y') + 1),
         ]);
 
@@ -83,7 +89,8 @@ class VehiculoController extends Controller
             'numero_vehiculo'  => ['required', 'regex:/^[0-9]{3}-[0-9]{2}$/', Rule::unique('vehiculos', 'numero_vehiculo')->whereNull('deleted_at')->ignore($id)],
             'placa'            => ['required', 'regex:/^[A-Z]{3}-[0-9]{4}$/', Rule::unique('vehiculos', 'placa')->whereNull('deleted_at')->ignore($id)],
             'marca'            => 'required|string|max:50',
-            'modelo'           => 'required|string|max:50',
+            'tipo_vehiculo'    => ['required', Rule::in(self::TIPOS_VEHICULO)],
+            'combustible'      => ['required', Rule::in(self::COMBUSTIBLES)],
             'anio_fabricacion' => 'required|integer|min:1980|max:' . (date('Y') + 1),
         ]);
 

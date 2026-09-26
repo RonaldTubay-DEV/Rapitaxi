@@ -12,13 +12,100 @@ use Illuminate\Validation\ValidationException;
 
 class MantenimientoController extends Controller
 {
-    public function index()
+    /**
+     * Paginado, con filtros y busqueda resueltos en el servidor.
+     *
+     * Parametros: ?revision=Pendiente (bandeja de lo que enviaron los socios),
+     * ?estado=, ?search= y ?per_page=.
+     *
+     * La bandeja de pendientes se pide aparte con ?revision=Pendiente: si se
+     * filtrara sobre la pagina visible, un pendiente en la pagina 3 no
+     * aparecería y nadie lo revisaria nunca.
+     */
+    public function index(Request $request)
     {
-        $mantenimientos = Mantenimiento::with('vehiculo.socio')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = Mantenimiento::with('vehiculo.socio')->orderBy('created_at', 'desc');
 
-        return response()->json($mantenimientos, 200);
+        if ($request->filled('revision')) {
+            $query->where('revision_estado', $request->revision);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('search')) {
+            $termino = '%' . mb_strtolower($request->search) . '%';
+            $query->where(function ($q) use ($termino) {
+                $q->whereRaw('LOWER(tipo_mantenimiento) LIKE ?', [$termino])
+                    ->orWhereHas('vehiculo', fn ($v) => $v
+                        ->whereRaw('LOWER(placa) LIKE ?', [$termino])
+                        ->orWhereRaw('LOWER(numero_vehiculo) LIKE ?', [$termino])
+                        ->orWhereHas('socio', fn ($s) => $s->whereRaw('LOWER(nombre) LIKE ?', [$termino])));
+            });
+        }
+
+        $porPagina = min(max((int) $request->input('per_page', 25), 1), 100);
+
+        return response()->json($query->paginate($porPagina), 200);
+    }
+
+    // Confirmar el registro que subio un socio: recien aqui la unidad
+    // pasa a contar como atendida en el plan de mantenimiento.
+    public function aprobar(Request $request, $id)
+    {
+        $mantenimiento = Mantenimiento::find($id);
+
+        if (! $mantenimiento) {
+            return response()->json(['message' => 'Registro no encontrado.'], 404);
+        }
+
+        if ($mantenimiento->revision_estado !== 'Pendiente') {
+            return response()->json(['message' => 'Este registro ya fue revisado.'], 422);
+        }
+
+        $mantenimiento->update([
+            'revision_estado' => 'Aprobado',
+            'motivo_rechazo' => null,
+            'revisado_por' => $request->user()->id,
+            'revisado_en' => now(),
+        ]);
+        $mantenimiento->load('vehiculo.socio');
+
+        return response()->json([
+            'message' => 'Mantenimiento aprobado exitosamente.',
+            'mantenimiento' => $mantenimiento,
+        ], 200);
+    }
+
+    // Rechazar con motivo (respaldo ilegible, fecha equivocada, etc.): el
+    // socio lo ve en su portal y puede volver a enviarlo.
+    public function rechazar(Request $request, $id)
+    {
+        $mantenimiento = Mantenimiento::find($id);
+
+        if (! $mantenimiento) {
+            return response()->json(['message' => 'Registro no encontrado.'], 404);
+        }
+
+        if ($mantenimiento->revision_estado !== 'Pendiente') {
+            return response()->json(['message' => 'Este registro ya fue revisado.'], 422);
+        }
+
+        $request->validate(['motivo_rechazo' => 'required|string|max:300']);
+
+        $mantenimiento->update([
+            'revision_estado' => 'Rechazado',
+            'motivo_rechazo' => $request->motivo_rechazo,
+            'revisado_por' => $request->user()->id,
+            'revisado_en' => now(),
+        ]);
+        $mantenimiento->load('vehiculo.socio');
+
+        return response()->json([
+            'message' => 'Mantenimiento rechazado.',
+            'mantenimiento' => $mantenimiento,
+        ], 200);
     }
 
     public function store(Request $request)
@@ -30,7 +117,6 @@ class MantenimientoController extends Controller
             'mecanico'                 => 'nullable|string|max:80',
             'kilometraje_actual'       => 'nullable|integer|min:0|max:9999999',
             'proximo_mantenimiento_km' => 'nullable|integer|min:0|max:9999999',
-            'costo'                    => 'nullable|numeric|min:0|max:999999.99',
             'estado'                   => 'required|in:Completado,En Proceso,Programado',
             'observaciones'            => 'nullable|string|max:800',
             'comprobante'              => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
@@ -40,7 +126,6 @@ class MantenimientoController extends Controller
             $request->validate([
                 // Un trabajo ya terminado no puede tener fecha futura.
                 'fecha_mantenimiento' => 'required|date|before_or_equal:today',
-                'costo' => 'required|numeric|min:0.01|max:999999.99',
                 'kilometraje_actual' => 'required|integer|min:1|max:9999999',
                 'observaciones' => 'required|string|max:800',
                 'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
@@ -60,10 +145,16 @@ class MantenimientoController extends Controller
         }
 
         $datos = $request->except('comprobante');
+
+        // Lo que registra el staff no pasa por revision, y nadie puede
+        // mandar estos campos a mano en la peticion.
+        $datos['origen'] = 'staff';
+        $datos['revision_estado'] = 'Aprobado';
+        $datos['motivo_rechazo'] = null;
+
         if ($request->estado !== 'Completado') {
             $datos['kilometraje_actual'] = 0;
             $datos['proximo_mantenimiento_km'] = null;
-            $datos['costo'] = 0;
             $datos['observaciones'] = null;
         }
 
@@ -97,7 +188,6 @@ class MantenimientoController extends Controller
             'estado'        => 'required|in:Completado,En Proceso,Programado',
             'kilometraje_actual' => 'nullable|integer|min:0|max:9999999',
             'proximo_mantenimiento_km' => 'nullable|integer|min:0|max:9999999',
-            'costo'         => 'nullable|numeric|min:0|max:999999.99',
             'observaciones' => 'nullable|string|max:800',
             'comprobante'   => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
@@ -108,7 +198,6 @@ class MantenimientoController extends Controller
 
         if ($request->estado === 'Completado') {
             $request->validate([
-                'costo' => 'required|numeric|min:0.01|max:999999.99',
                 'kilometraje_actual' => 'required|integer|min:1|max:9999999',
                 'observaciones' => 'required|string|max:800',
                 'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
@@ -139,7 +228,6 @@ class MantenimientoController extends Controller
         if ($request->estado === 'Completado') {
             $mantenimiento->kilometraje_actual = $request->kilometraje_actual;
             $mantenimiento->proximo_mantenimiento_km = $request->proximo_mantenimiento_km;
-            $mantenimiento->costo = $request->costo;
             $mantenimiento->observaciones = $request->observaciones;
         }
 
@@ -164,7 +252,7 @@ class MantenimientoController extends Controller
     // El odometro de una unidad solo sube: un kilometraje menor al del
     // ultimo mantenimiento completado (a esa fecha o antes) es un error de
     // digitacion o un intento de esconder un dato.
-    private function validarKilometrajeNoRetrocede(int $vehiculoId, int $km, string $fecha, ?int $ignorarId = null): void
+    public function validarKilometrajeNoRetrocede(int $vehiculoId, int $km, string $fecha, ?int $ignorarId = null): void
     {
         $anterior = Mantenimiento::where('vehiculo_id', $vehiculoId)
             ->where('estado', 'Completado')

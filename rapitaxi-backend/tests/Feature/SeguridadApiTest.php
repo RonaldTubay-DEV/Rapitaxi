@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Aportacion;
+use App\Models\Mantenimiento;
 use App\Models\Socio;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -169,7 +170,8 @@ class SeguridadApiTest extends TestCase
         [$socio, $usuario] = $this->crearSocioConCuenta();
 
         $this->api($this->tokenDe($this->crearUsuario('admin')))->putJson("/api/socios/{$socio->id}", [
-            'nombre' => $socio->nombre, 'cedula' => $socio->cedula, 'estado' => 'Inactivo', 'motivo_baja' => 'Falta grave',
+            'nombre' => $socio->nombre, 'cedula' => $socio->cedula, 'telefono' => $socio->telefono,
+            'correo' => $socio->correo, 'estado' => 'Inactivo', 'motivo_baja' => 'Falta grave',
         ])->assertOk();
 
         $this->assertFalse($usuario->fresh()->is_active);
@@ -238,7 +240,7 @@ class SeguridadApiTest extends TestCase
         [$socio, $usuario] = $this->crearSocioConCuenta();
 
         $this->api($this->tokenDe($usuario))->putJson('/api/mi-perfil', [
-            'telefono' => '0991234567', 'nombre' => 'HACKEADO', 'cedula' => '0000000000',
+            'telefono' => '0991234567', 'correo' => 'sigo.siendo@rapitaxi.test', 'nombre' => 'HACKEADO', 'cedula' => '0000000000',
             'estado' => 'Inactivo', 'observaciones' => 'borrado', 'user_id' => 999,
         ])->assertOk();
 
@@ -310,11 +312,45 @@ class SeguridadApiTest extends TestCase
     public function test_la_cedula_debe_tener_digito_verificador_valido(): void
     {
         $token = $this->tokenDe($this->crearUsuario('admin'));
-        $socio = fn (string $cedula) => ['nombre' => 'Nuevo Socio', 'cedula' => $cedula, 'estado' => 'Activo'];
+        $socio = fn (string $cedula) => [
+            'nombre' => 'Nuevo Socio', 'cedula' => $cedula, 'telefono' => '0991234567',
+            'correo' => 'nuevo.socio@rapitaxi.test', 'estado' => 'Activo',
+        ];
 
         $this->api($token)->postJson('/api/socios', $socio('1234567890'))->assertStatus(422)->assertJsonValidationErrors('cedula');
         $this->api($token)->postJson('/api/socios', $socio('9912345678'))->assertStatus(422)->assertJsonValidationErrors('cedula');
         $this->api($token)->postJson('/api/socios', $socio($this->cedulaValida(10)))->assertStatus(201);
+    }
+
+    public function test_telefono_y_correo_son_obligatorios_y_deben_tener_formato_valido_al_registrar_un_socio(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        $base = ['nombre' => 'Nuevo Socio', 'cedula' => $this->cedulaValida(20), 'estado' => 'Activo'];
+
+        $this->api($token)->postJson('/api/socios', $base)
+            ->assertStatus(422)->assertJsonValidationErrors(['telefono', 'correo']);
+
+        $this->api($token)->postJson('/api/socios', $base + ['telefono' => '12345', 'correo' => 'no-es-un-correo'])
+            ->assertStatus(422)->assertJsonValidationErrors(['telefono', 'correo']);
+
+        $this->api($token)->postJson('/api/socios', $base + ['telefono' => '0991234567', 'correo' => 'nuevo@rapitaxi.test'])
+            ->assertStatus(201);
+    }
+
+    public function test_el_tipo_de_vehiculo_y_el_combustible_deben_estar_en_la_lista_permitida(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $datos = fn (array $cambios) => $cambios + [
+            'socio_id' => $socio->id, 'numero_vehiculo' => '012-02', 'placa' => 'ABC-1234',
+            'marca' => 'KIA', 'tipo_vehiculo' => 'Sedán', 'combustible' => 'Gasolina', 'anio_fabricacion' => 2020,
+        ];
+
+        $this->api($token)->postJson('/api/vehiculos', $datos(['tipo_vehiculo' => 'Camión de carga']))
+            ->assertStatus(422)->assertJsonValidationErrors('tipo_vehiculo');
+        $this->api($token)->postJson('/api/vehiculos', $datos(['combustible' => 'Leña']))
+            ->assertStatus(422)->assertJsonValidationErrors('combustible');
+        $this->api($token)->postJson('/api/vehiculos', $datos([]))->assertStatus(201);
     }
 
     public function test_no_se_repite_el_numero_de_unidad_entre_vehiculos_activos(): void
@@ -325,19 +361,29 @@ class SeguridadApiTest extends TestCase
 
         $this->api($token)->postJson('/api/vehiculos', [
             'socio_id' => $socio->id, 'numero_vehiculo' => '012-01', 'placa' => 'PBA-1234',
-            'marca' => 'Chevrolet', 'modelo' => 'Sail', 'anio_fabricacion' => 2020,
+            'marca' => 'Chevrolet', 'tipo_vehiculo' => 'Hatchback', 'combustible' => 'Gasolina', 'anio_fabricacion' => 2020,
         ])->assertStatus(422)->assertJsonValidationErrors('numero_vehiculo');
     }
 
-    public function test_el_texto_con_html_se_guarda_tal_cual_sin_ejecutarse(): void
+    public function test_un_nombre_con_html_o_numeros_es_rechazado_y_las_respuestas_siempre_son_json(): void
     {
         $token = $this->tokenDe($this->crearUsuario('admin'));
 
-        $respuesta = $this->api($token)->postJson('/api/socios', [
+        // El nombre solo admite letras/espacios: un intento de XSS ni siquiera
+        // llega a guardarse (defensa mas fuerte que solo escapar al mostrarlo).
+        $this->api($token)->postJson('/api/socios', [
             'nombre' => '<script>alert(1)</script>', 'estado' => 'Activo',
+        ])->assertStatus(422)->assertJsonValidationErrors('nombre');
+
+        $this->api($token)->postJson('/api/socios', [
+            'nombre' => 'Juan123', 'estado' => 'Activo',
+        ])->assertStatus(422)->assertJsonValidationErrors('nombre');
+
+        $respuesta = $this->api($token)->postJson('/api/socios', [
+            'nombre' => 'Juan Pérez', 'cedula' => $this->cedulaValida(30), 'telefono' => '0991234567',
+            'correo' => 'juan.perez@rapitaxi.test', 'estado' => 'Activo',
         ])->assertStatus(201);
 
-        $this->assertSame('<script>alert(1)</script>', $respuesta->json('socio.nombre'));
         $this->assertStringContainsString('application/json', $respuesta->headers->get('Content-Type'));
     }
 
@@ -351,6 +397,139 @@ class SeguridadApiTest extends TestCase
         $this->assertCount(0, $respuesta->json());
     }
 
+    // --------------------------------------- atributos calculados del socio
+
+    public function test_la_pantalla_de_socios_recibe_los_atributos_calculados(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $this->crearVehiculo($socio);
+
+        // Ya no van en $appends (calcularlos siempre costaba miles de consultas
+        // al anidar socios); cada endpoint de esta pantalla debe agregarlos.
+        $this->api($token)->getJson('/api/socios')->assertOk()
+            ->assertJsonStructure(['*' => ['estado_pago_actual', 'numero_vehiculo', 'placa', 'cuenta_activa']]);
+
+        $this->api($token)->getJson('/api/socios')->assertOk()
+            ->assertJsonPath('0.estado_pago_actual', 'En mora')
+            ->assertJsonPath('0.placa', 'MBC-4650')
+            ->assertJsonPath('0.numero_vehiculo', '012-01')
+            ->assertJsonPath('0.cuenta_activa', true);
+
+        $this->api($token)->getJson("/api/socios/{$socio->id}")->assertOk()
+            ->assertJsonPath('estado_pago_actual', 'En mora');
+    }
+
+    public function test_un_socio_anidado_en_otra_respuesta_no_arrastra_los_calculados(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $this->crearVehiculo($socio);
+        Aportacion::create([
+            'socio_id' => $socio->id, 'mes_pagado' => 1, 'anio_pagado' => 2026,
+            'monto' => 20, 'fecha_pago' => now(), 'estado' => 'Aprobado',
+        ]);
+
+        // Cada atributo calculado dispara consultas propias: no deben viajar
+        // donde la pantalla solo necesita el nombre del socio.
+        // (/aportaciones viene paginado, por eso el prefijo "data".)
+        $this->api($token)->getJson('/api/aportaciones')->assertOk()
+            ->assertJsonPath('data.0.socio.nombre', 'Socio de Prueba')
+            ->assertJsonMissingPath('data.0.socio.estado_pago_actual')
+            ->assertJsonMissingPath('data.0.socio.cuenta_activa');
+
+        $this->api($token)->getJson('/api/vehiculos')->assertOk()
+            ->assertJsonMissingPath('0.socio.estado_pago_actual');
+    }
+
+    // --------------------------------------------------- paginacion
+
+    public function test_los_listados_que_crecen_sin_techo_vienen_paginados(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $vehiculo = $this->crearVehiculo($socio);
+
+        foreach (range(1, 30) as $i) {
+            Aportacion::create([
+                'socio_id' => $socio->id, 'mes_pagado' => ($i % 12) + 1, 'anio_pagado' => 2020 + $i,
+                'monto' => 20, 'fecha_pago' => now(), 'estado' => 'Aprobado',
+            ]);
+            \App\Models\Revision::create([
+                'vehiculo_id' => $vehiculo->id, 'fecha_revision' => now()->subDays($i)->toDateString(),
+                'tipo' => 'RTV', 'estado' => 'Aprobada',
+            ]);
+        }
+
+        foreach (['aportaciones', 'revisiones'] as $recurso) {
+            $this->api($token)->getJson("/api/{$recurso}")->assertOk()
+                ->assertJsonStructure(['data', 'current_page', 'last_page', 'per_page', 'total'])
+                ->assertJsonPath('total', 30)
+                ->assertJsonPath('per_page', 25)
+                ->assertJsonCount(25, 'data');
+
+            $this->api($token)->getJson("/api/{$recurso}?page=2")->assertOk()
+                ->assertJsonCount(5, 'data');
+        }
+    }
+
+    public function test_el_tamano_de_pagina_es_configurable_pero_tiene_tope(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        foreach (range(1, 12) as $i) {
+            Aportacion::create([
+                'socio_id' => $socio->id, 'mes_pagado' => $i, 'anio_pagado' => 2026,
+                'monto' => 20, 'fecha_pago' => now(), 'estado' => 'Aprobado',
+            ]);
+        }
+
+        $this->api($token)->getJson('/api/aportaciones?per_page=5')->assertOk()->assertJsonCount(5, 'data');
+
+        // Pedir la tabla entera no debe ser posible.
+        $this->api($token)->getJson('/api/aportaciones?per_page=99999')->assertOk()->assertJsonPath('per_page', 100);
+        $this->api($token)->getJson('/api/aportaciones?per_page=0')->assertOk()->assertJsonPath('per_page', 1);
+    }
+
+    public function test_la_busqueda_de_los_listados_paginados_se_resuelve_en_el_servidor(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socioA] = $this->crearSocioConCuenta();
+        $socioB = Socio::create(['nombre' => 'Mariana Velez', 'cedula' => $this->cedulaValida(77), 'estado' => 'Activo']);
+        $base = ['mes_pagado' => 1, 'anio_pagado' => 2026, 'monto' => 20, 'fecha_pago' => now(), 'estado' => 'Aprobado'];
+
+        Aportacion::create($base + ['socio_id' => $socioA->id]);
+        Aportacion::create($base + ['socio_id' => $socioB->id]);
+
+        // Busca por el socio, aunque el registro este en otra pagina.
+        $this->api($token)->getJson('/api/aportaciones?search=mariana')->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.socio.nombre', 'Mariana Velez');
+
+        $this->api($token)->getJson('/api/aportaciones?search=nadie')->assertOk()->assertJsonPath('total', 0);
+    }
+
+    public function test_la_bandeja_de_pendientes_se_pide_aparte_y_no_depende_de_la_pagina(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $vehiculo = $this->crearVehiculo($socio);
+        $base = ['vehiculo_id' => $vehiculo->id, 'tipo_mantenimiento' => 'Frenos', 'kilometraje_actual' => 1000, 'estado' => 'Completado'];
+
+        // 30 aprobados (llenan mas de una pagina) y 1 pendiente al final.
+        foreach (range(1, 30) as $i) {
+            Mantenimiento::create($base + ['fecha_mantenimiento' => now()->subDays($i)->toDateString()]);
+        }
+        Mantenimiento::create($base + [
+            'fecha_mantenimiento' => now()->subDays(60)->toDateString(),
+            'revision_estado' => 'Pendiente', 'origen' => 'socio',
+        ]);
+
+        $this->api($token)->getJson('/api/mantenimientos?revision=Pendiente')->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('data.0.revision_estado', 'Pendiente');
+    }
+
     // ------------------------------------------------ mantenimiento
 
     private function datosMantenimientoCompletado(int $vehiculoId, array $cambios = []): array
@@ -358,7 +537,7 @@ class SeguridadApiTest extends TestCase
         return $cambios + [
             'vehiculo_id' => $vehiculoId, 'fecha_mantenimiento' => now()->toDateString(),
             'tipo_mantenimiento' => 'Suspensión', 'estado' => 'Completado', 'kilometraje_actual' => 50000,
-            'costo' => 80, 'observaciones' => 'Cambio de amortiguadores',
+            'observaciones' => 'Cambio de amortiguadores',
             'comprobante' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
         ];
     }
@@ -400,17 +579,53 @@ class SeguridadApiTest extends TestCase
         $this->api($token)->getJson('/api/dashboard/stats')->assertOk()->assertJsonPath('kpis.socios_activos', 2);
     }
 
-    public function test_el_gasto_del_mes_no_suma_el_mismo_mes_de_otros_anios(): void
+    public function test_el_mantenimiento_no_guarda_ningun_costo(): void
     {
         $token = $this->tokenDe($this->crearUsuario('admin'));
         [$socio] = $this->crearSocioConCuenta();
         $vehiculo = $this->crearVehiculo($socio);
-        $base = ['vehiculo_id' => $vehiculo->id, 'tipo_mantenimiento' => 'Frenos', 'estado' => 'Completado', 'kilometraje_actual' => 1000];
 
-        \App\Models\Mantenimiento::create($base + ['fecha_mantenimiento' => now()->toDateString(), 'costo' => 100]);
-        \App\Models\Mantenimiento::create($base + ['fecha_mantenimiento' => now()->subYear()->toDateString(), 'costo' => 900]);
+        // Aunque alguien mande "costo" a mano, no debe quedar rastro de dinero:
+        // esos gastos los maneja cada socio por su cuenta.
+        $respuesta = $this->api($token)->post('/api/mantenimientos', $this->datosMantenimientoCompletado($vehiculo->id, [
+            'costo' => 500,
+        ]), ['Accept' => 'application/json'])->assertStatus(201);
 
-        $this->assertEquals(100, $this->api($token)->getJson('/api/dashboard/stats')->assertOk()->json('kpis.gastos_mes'));
+        $respuesta->assertJsonMissingPath('mantenimiento.costo');
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('mantenimientos', 'costo'));
+        $this->api($token)->getJson('/api/dashboard/stats')->assertOk()->assertJsonMissingPath('kpis.gastos_mes');
+    }
+
+    public function test_el_dashboard_cuenta_las_unidades_sin_mantenimiento_reciente(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $alDia = $this->crearVehiculo($socio, ['numero_vehiculo' => '012-01', 'placa' => 'AAA-1111']);
+        $atrasado = $this->crearVehiculo($socio, ['numero_vehiculo' => '012-02', 'placa' => 'BBB-2222']);
+        $this->crearVehiculo($socio, ['numero_vehiculo' => '012-03', 'placa' => 'CCC-3333']); // nunca tuvo ninguno
+        $base = ['tipo_mantenimiento' => 'Frenos', 'estado' => 'Completado', 'kilometraje_actual' => 1000];
+
+        \App\Models\Mantenimiento::create($base + ['vehiculo_id' => $alDia->id, 'fecha_mantenimiento' => now()->subMonth()->toDateString()]);
+        \App\Models\Mantenimiento::create($base + ['vehiculo_id' => $atrasado->id, 'fecha_mantenimiento' => now()->subMonths(8)->toDateString()]);
+
+        $this->api($token)->getJson('/api/dashboard/stats')->assertOk()
+            ->assertJsonPath('kpis.unidades_sin_mantenimiento', 2)
+            ->assertJsonPath('kpis.meses_sin_mantenimiento', 6);
+    }
+
+    public function test_un_mantenimiento_programado_no_cuenta_como_unidad_atendida(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $vehiculo = $this->crearVehiculo($socio);
+
+        \App\Models\Mantenimiento::create([
+            'vehiculo_id' => $vehiculo->id, 'tipo_mantenimiento' => 'Frenos', 'estado' => 'Programado',
+            'fecha_mantenimiento' => now()->toDateString(), 'kilometraje_actual' => 0,
+        ]);
+
+        $this->api($token)->getJson('/api/dashboard/stats')->assertOk()
+            ->assertJsonPath('kpis.unidades_sin_mantenimiento', 1);
     }
 
     public function test_la_flota_al_dia_exige_una_revision_aprobada_reciente_de_un_vehiculo_vigente(): void
@@ -507,7 +722,7 @@ class SeguridadApiTest extends TestCase
         $token = $this->tokenDe($usuario);
 
         $this->api($token)->getJson('/api/mi-perfil')->assertOk()->assertJsonPath('vehiculos.0.placa', 'MBC-4650');
-        $this->api($token)->putJson('/api/mi-perfil', ['telefono' => '0991234567'])
+        $this->api($token)->putJson('/api/mi-perfil', ['telefono' => '0991234567', 'correo' => 'sigo.siendo@rapitaxi.test'])
             ->assertOk()->assertJsonPath('socio.vehiculos.0.placa', 'MBC-4650');
     }
 

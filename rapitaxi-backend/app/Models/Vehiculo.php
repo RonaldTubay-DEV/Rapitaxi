@@ -18,7 +18,8 @@ class Vehiculo extends Model
         'numero_vehiculo', // <-- Nuevo
         'placa',           // <-- Nuevo
         'marca',
-        'modelo',
+        'tipo_vehiculo',
+        'combustible',
         'anio_fabricacion',
         'color',
     ];
@@ -36,5 +37,10 @@ class Vehiculo extends Model
     public function socio()
     {
         return $this->belongsTo(Socio::class);
+    }
+
+    public function mantenimientos()
+    {
+        return $this->hasMany(Mantenimiento::class);
     }
 }

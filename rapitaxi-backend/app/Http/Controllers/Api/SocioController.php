@@ -11,6 +11,13 @@ use Illuminate\Validation\Rule;
 
 class SocioController extends Controller
 {
+    // Solo letras (con tildes y Ñ), espacios, apostrofes y guiones: nadie
+    // tiene numeros ni simbolos como parte de su nombre. 3-80 caracteres.
+    private const REGEX_NOMBRE = "/^[\\pL\\s'-]{3,80}$/u";
+
+    // Telefono ecuatoriano: 10 digitos, siempre empieza en 0.
+    private const REGEX_TELEFONO = '/^0[0-9]{9}$/';
+
     // 1. Obtener todos los socios (Con soporte para el buscador de la interfaz)
     public function index(Request $request)
     {
@@ -31,21 +38,31 @@ class SocioController extends Controller
             });
         }
 
-        // Precargamos tambien 'aportaciones' para que el accessor estado_pago_actual
-        // no dispare una consulta nueva por cada socio de la lista.
-        $socios = $query->with(['vehiculos', 'user', 'aportaciones'])->get();
+        // De las aportaciones solo se precarga la del mes en curso, que es la
+        // unica que mira el accessor estado_pago_actual. Antes se traia el
+        // historial completo de cada socio: con dos años de datos eran miles de
+        // filas que nadie muestra, y la respuesta pasaba del megabyte.
+        $socios = $query->with([
+            'vehiculos',
+            'user',
+            'aportaciones' => fn ($q) => $q
+                ->where('mes_pagado', now()->month)
+                ->where('anio_pagado', now()->year),
+        ])->get()->append(Socio::ATRIBUTOS_CALCULADOS);
+
         return response()->json($socios, 200);
     }
 
-    // 2. Almacenar un nuevo socio con validaciones opcionales (cédula y teléfono)
+    // 2. Almacenar un nuevo socio: nombre, cedula, telefono y correo son
+    // obligatorios (son los datos minimos para identificar y contactar a
+    // un socio real de la cooperativa).
     public function store(Request $request)
     {
         $request->validate([
-            
-            'nombre'          => 'required|string|max:80',
-            'cedula'          => ['nullable', 'digits:10', new CedulaEcuatoriana, Rule::unique('socios', 'cedula')->whereNull('deleted_at')],
-            'telefono'        => 'nullable|digits:10',                      
-            'correo'          => 'nullable|email|max:100',
+            'nombre'          => ['required', 'string', 'max:80', 'regex:' . self::REGEX_NOMBRE],
+            'cedula'          => ['required', 'digits:10', new CedulaEcuatoriana, Rule::unique('socios', 'cedula')->whereNull('deleted_at')],
+            'telefono'        => ['required', 'regex:' . self::REGEX_TELEFONO],
+            'correo'          => 'required|email|max:100',
             'direccion'       => 'nullable|string|max:150',
             'estado'          => 'required|in:Activo,Inactivo',
             'observaciones'   => 'nullable|string|max:500',
@@ -62,7 +79,7 @@ class SocioController extends Controller
 
         return response()->json([
             'message' => 'Socio registrado con éxito.',
-            'socio' => $socio
+            'socio' => $socio->append(Socio::ATRIBUTOS_CALCULADOS),
         ], 201);
     }
 
@@ -75,7 +92,7 @@ class SocioController extends Controller
             return response()->json(['message' => 'Socio no encontrado.'], 404);
         }
 
-        return response()->json($socio, 200);
+        return response()->json($socio->append(Socio::ATRIBUTOS_CALCULADOS), 200);
     }
 
     // 4. Actualizar los datos de un socio existente
@@ -89,15 +106,13 @@ class SocioController extends Controller
 
         // Validamos la cédula asegurando que ignore el ID actual para permitir la actualización
         $request->validate([
-
-            'nombre'          => 'required|string|max:80',
-            'cedula'          => ['nullable', 'digits:10', new CedulaEcuatoriana, Rule::unique('socios', 'cedula')->whereNull('deleted_at')->ignore($id)],
-            'telefono'        => 'nullable|digits:10',
-            'correo'          => 'nullable|email|max:100',
+            'nombre'          => ['required', 'string', 'max:80', 'regex:' . self::REGEX_NOMBRE],
+            'cedula'          => ['required', 'digits:10', new CedulaEcuatoriana, Rule::unique('socios', 'cedula')->whereNull('deleted_at')->ignore($id)],
+            'telefono'        => ['required', 'regex:' . self::REGEX_TELEFONO],
+            'correo'          => 'required|email|max:100',
             'direccion'       => 'nullable|string|max:150',
             'estado'          => 'required|in:Activo,Inactivo',
             'observaciones'   => 'nullable|string|max:500',
-
         ]);
 
         $datos = $request->only(['nombre', 'cedula', 'telefono', 'correo', 'direccion', 'estado', 'observaciones']);
@@ -120,7 +135,7 @@ class SocioController extends Controller
 
         return response()->json([
             'message' => 'Socio actualizado con éxito.',
-            'socio' => $socio
+            'socio' => $socio->append(Socio::ATRIBUTOS_CALCULADOS),
         ], 200);
     }
 
@@ -179,7 +194,12 @@ class SocioController extends Controller
             });
         }
 
-        return response()->json($query->get(), 200);
+        // La pantalla muestra el estado de la cuenta de cada socio dado de baja,
+        // asi que se precarga la relacion en vez de consultarla uno por uno.
+        return response()->json(
+            $query->with(['vehiculos', 'user'])->get()->append(Socio::ATRIBUTOS_CALCULADOS),
+            200
+        );
     }
 
     // 7. Reactivar un socio dado de baja, con todo su historial intacto
@@ -200,11 +220,17 @@ class SocioController extends Controller
         }
 
         $socio->restore();
-        $socio->load(['vehiculos', 'user', 'aportaciones']);
+        $socio->load([
+            'vehiculos',
+            'user',
+            'aportaciones' => fn ($q) => $q
+                ->where('mes_pagado', now()->month)
+                ->where('anio_pagado', now()->year),
+        ]);
 
         return response()->json([
             'message' => 'Socio reactivado con éxito.',
-            'socio' => $socio,
+            'socio' => $socio->append(Socio::ATRIBUTOS_CALCULADOS),
         ], 200);
     }
 }

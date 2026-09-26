@@ -22,6 +22,7 @@ import UsuariosScreen from './screens/UsuariosScreen';
 import AuditoriaScreen from './screens/AuditoriaScreen';
 import MiPerfilScreen from './screens/portal/MiPerfilScreen';
 import MisAportacionesScreen from './screens/portal/MisAportacionesScreen';
+import MisUnidadesScreen from './screens/portal/MisUnidadesScreen';
 
 // Importación de la Plantilla Base
 import MainLayout from './components/MainLayout';
@@ -68,6 +69,7 @@ function App() {
             <Route element={<SocioPortalLayout />}>
               <Route path="/portal" element={<Navigate to="/portal/perfil" replace />} />
               <Route path="/portal/perfil" element={<MiPerfilScreen />} />
+              <Route path="/portal/unidades" element={<MisUnidadesScreen />} />
               <Route path="/portal/aportaciones" element={<MisAportacionesScreen />} />
             </Route>
           </Route>

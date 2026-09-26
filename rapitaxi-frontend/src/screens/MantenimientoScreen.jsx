@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Wrench, Search, Trash2, Loader2, AlertCircle, X, Save, 
-  Gauge, FileText, Upload, BatteryCharging, CircleDot
+  Wrench, Search, Trash2, Loader2, AlertCircle, X, Save,
+  Gauge, FileText, Upload, BatteryCharging, CircleDot, ClipboardCheck
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
+import { apiClient, ApiError } from '../lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
-import { limitText, normalizeDecimal, onlyDigits } from '../utils/inputFormatters';
+import { limitText, onlyDigits } from '../utils/inputFormatters';
+import Paginacion from '../components/Paginacion';
 
 const MantenimientoScreen = () => {
   const [mantenimientos, setMantenimientos] = useState([]);
@@ -14,6 +16,19 @@ const MantenimientoScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Todos');
+
+  // El servidor pagina, filtra y busca: esta tabla crece con cada trabajo
+  // que se le hace a cada unidad.
+  const [pagina, setPagina] = useState(1);
+  const [meta, setMeta] = useState(null);
+  // La bandeja se pide aparte: un pendiente que caiga en la pagina 3 tiene
+  // que verse igual, o nadie lo revisaria nunca.
+  const [pendientesRevision, setPendientesRevision] = useState([]);
+
+  // Revision de lo que envian los socios desde su portal.
+  const [revisandoId, setRevisandoId] = useState(null);
+  const [mantenimientoARechazar, setMantenimientoARechazar] = useState(null);
+  const [motivoRechazo, setMotivoRechazo] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -28,7 +43,6 @@ const MantenimientoScreen = () => {
     proximo_mantenimiento_km: '',
     detalle_1: '',
     detalle_2: '',
-    costo: '',
     observaciones: ''
   });
   
@@ -47,38 +61,74 @@ const MantenimientoScreen = () => {
     tipo_personalizado: '', 
     kilometraje_actual: '',
     proximo_mantenimiento_km: '',
-    costo: '',
-    estado: 'En Proceso', 
+    estado: 'En Proceso',
     observaciones: '',
     detalle_1: '', 
     detalle_2: ''
   });
 
-  const fetchData = async () => {
+  // sigueVigente() descarta una respuesta que llega tarde: si el usuario ya
+  // cambio de pagina o de busqueda, aplicarla mostraria datos equivocados.
+  const fetchData = async (sigueVigente = () => true) => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' };
-      const [resM, resV] = await Promise.all([
-        fetch(`${API_URL}/mantenimientos`, { headers }),
-        fetch(`${API_URL}/vehiculos`, { headers })
-      ]);
-      if (resM.ok && resV.ok) {
-        setMantenimientos(await resM.json());
-        setVehiculos(await resV.json());
+      const params = new URLSearchParams({ page: pagina });
+      if (statusFilter !== 'Todos') params.set('estado', statusFilter);
+      if (searchTerm.trim()) params.set('search', searchTerm.trim());
+
+      const resM = await fetch(`${API_URL}/mantenimientos?${params}`, { headers });
+      if (!sigueVigente()) return;
+
+      if (resM.ok) {
+        const { data, ...paginacion } = await resM.json();
+        setMantenimientos(data);
+        setMeta(paginacion);
       }
     } catch (err) { console.error(err); }
-    finally { setIsLoading(false); }
+    finally { if (sigueVigente()) setIsLoading(false); }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // Los vehiculos alimentan el selector del formulario, y la bandeja de
+  // pendientes no depende de la pagina: ambos se piden una sola vez al entrar.
+  useEffect(() => {
+    const headers = { Authorization: `Bearer ${localStorage.getItem('auth_token')}`, Accept: 'application/json' };
+
+    Promise.all([
+      fetch(`${API_URL}/vehiculos`, { headers }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_URL}/mantenimientos?revision=Pendiente&per_page=100`, { headers }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([listaVehiculos, pendientes]) => {
+        setVehiculos(listaVehiculos);
+        setPendientesRevision(pendientes?.data ?? []);
+      })
+      .catch(() => setVehiculos([]));
+  }, []);
+
+  // Medio segundo de espera al escribir, para no consultar en cada tecla.
+  useEffect(() => {
+    let vigente = true;
+    const temporizador = setTimeout(() => { fetchData(() => vigente); }, searchTerm ? 500 : 0);
+    return () => { vigente = false; clearTimeout(temporizador); };
+  }, [pagina, searchTerm, statusFilter]);
+
+  // Cambiar de filtro o de busqueda siempre vuelve a la primera pagina.
+  const handleBuscar = (valor) => {
+    setSearchTerm(valor);
+    setPagina(1);
+  };
+
+  const handleFiltroEstado = (valor) => {
+    setStatusFilter(valor);
+    setPagina(1);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const formatters = {
       kilometraje_actual: (input) => onlyDigits(input, 7),
       proximo_mantenimiento_km: (input) => onlyDigits(input, 7),
-      costo: (input) => normalizeDecimal(input, 6),
       tipo_personalizado: (input) => limitText(input, 80),
       detalle_1: (input) => limitText(input, 120),
       detalle_2: (input) => ['Llantas', 'Sistema Eléctrico'].includes(formData.tipo_mantenimiento) ? onlyDigits(input, 3) : limitText(input, 120),
@@ -116,10 +166,9 @@ const MantenimientoScreen = () => {
         tipo_mantenimiento: 'Tipo de trabajo',
         kilometraje_actual: 'Kilometraje actual',
         proximo_mantenimiento_km: 'Proximo mantenimiento',
-        costo: 'Costo',
         estado: 'Estado',
         observaciones: 'Descripcion del trabajo',
-        comprobante: 'Comprobante de pago',
+        comprobante: 'Respaldo del trabajo',
       };
 
       const validationMessages = Object.entries(errorData.errors).map(([field, messages]) => {
@@ -147,7 +196,6 @@ const MantenimientoScreen = () => {
     const formatters = {
       kilometraje_actual: (input) => onlyDigits(input, 7),
       proximo_mantenimiento_km: (input) => onlyDigits(input, 7),
-      costo: (input) => normalizeDecimal(input, 6),
       detalle_1: (input) => limitText(input, 120),
       detalle_2: (input) => ['Llantas', 'Sistema Eléctrico'].includes(tipoActual) ? onlyDigits(input, 3) : limitText(input, 120),
       observaciones: (input) => limitText(input, 500),
@@ -231,11 +279,6 @@ const MantenimientoScreen = () => {
 
     if (['Cambio de Aceite', 'Llantas', 'Sistema Eléctrico'].includes(tipoMantenimiento) && datos.detalle_2.trim() === '') {
       setError('Debes completar el segundo detalle tecnico del trabajo realizado.');
-      return false;
-    }
-
-    if (!datos.costo || parseFloat(datos.costo) <= 0) {
-      setError('Para completar debes ingresar el costo del mantenimiento.');
       return false;
     }
 
@@ -329,7 +372,7 @@ const MantenimientoScreen = () => {
 
     if (formData.estado === 'Completado') {
       if (!file) {
-        setFormError('Para registrar como completado debes adjuntar el comprobante de pago.');
+        setFormError('Para registrar como completado debes adjuntar el respaldo del trabajo (factura, orden de taller o foto).');
         setIsSubmitting(false); return;
       }
       if (!validarDatosCierre(formData, formData.tipo_mantenimiento, setFormError)) {
@@ -384,7 +427,7 @@ const MantenimientoScreen = () => {
 
     const data = new FormData();
     Object.keys(formData).forEach(key => {
-      if (key !== 'tipo_personalizado' && key !== 'detalle_1' && key !== 'detalle_2' && key !== 'observaciones' && key !== 'costo') {
+      if (key !== 'tipo_personalizado' && key !== 'detalle_1' && key !== 'detalle_2' && key !== 'observaciones') {
         if (key === 'tipo_mantenimiento') {
           data.append(key, formData.tipo_mantenimiento === 'Otro' ? formData.tipo_personalizado : formData.tipo_mantenimiento);
         } else {
@@ -394,7 +437,6 @@ const MantenimientoScreen = () => {
     });
 
     if (formData.estado === 'Completado') {
-      data.append('costo', formData.costo);
       data.append('observaciones', observacionesEnriquecidas);
       data.append('comprobante', file);
     }
@@ -457,7 +499,6 @@ const MantenimientoScreen = () => {
         proximo_mantenimiento_km: m.proximo_mantenimiento_km ? String(m.proximo_mantenimiento_km) : '',
         detalle_1: '',
         detalle_2: '',
-        costo: m.costo && parseFloat(m.costo) > 0 ? parseFloat(m.costo).toFixed(2) : '',
         observaciones: ''
       });
       setIsUploadModalOpen(true);
@@ -476,7 +517,6 @@ const MantenimientoScreen = () => {
         data.append('estado', nuevoEstado);
         data.append('kilometraje_actual', cierre.kilometraje_actual);
         data.append('proximo_mantenimiento_km', cierre.proximo_mantenimiento_km || '');
-        data.append('costo', cierre.costo);
         data.append('observaciones', cierre.observaciones);
         data.append('comprobante', cierre.archivoAdjunto);
         data.append('_method', 'PUT'); 
@@ -513,7 +553,7 @@ const MantenimientoScreen = () => {
   const handleUploadSubmit = async (e) => {
     e.preventDefault();
     if (!uploadFile) {
-      showErrorToast('Debes adjuntar el comprobante de pago.');
+      showErrorToast('Debes adjuntar el respaldo del trabajo (factura, orden de taller o foto).');
       return;
     }
     const mantenimientoActual = mantenimientos.find(item => item.id === mantenimientoIdToComplete);
@@ -526,21 +566,50 @@ const MantenimientoScreen = () => {
       archivoAdjunto: uploadFile,
       kilometraje_actual: completionData.kilometraje_actual,
       proximo_mantenimiento_km: completionData.proximo_mantenimiento_km,
-      costo: completionData.costo,
       observaciones: buildObservacionesCierre(tipoMantenimiento, completionData)
     });
     setIsSubmitting(false);
   };
 
-  const mantenimientosFiltrados = mantenimientos.filter(m => {
-    const matchesSearch = 
-      (m.vehiculo?.socio?.nombre ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (m.vehiculo?.numero_vehiculo ?? '').includes(searchTerm) ||
-      (m.vehiculo?.placa ?? '').includes(searchTerm) ||
-      (m.tipo_mantenimiento ?? '').toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'Todos' || m.estado === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
+  // Al revisar un registro sale de la bandeja y se refresca en la tabla,
+  // sin tener que recargar toda la pantalla.
+  const reemplazarEnLista = (actualizado) => {
+    setMantenimientos((actuales) => actuales.map((m) => (m.id === actualizado.id ? actualizado : m)));
+    setPendientesRevision((actuales) => actuales.filter((m) => m.id !== actualizado.id));
+  };
+
+  const aprobarMantenimiento = async (id) => {
+    setRevisandoId(id);
+    try {
+      const data = await apiClient.put(`/mantenimientos/${id}/aprobar`);
+      reemplazarEnLista(data.mantenimiento);
+      showSuccessToast(data.message);
+    } catch (err) {
+      showErrorToast(err instanceof ApiError ? err.message : 'No se pudo aprobar el registro.');
+    } finally {
+      setRevisandoId(null);
+    }
+  };
+
+  const confirmarRechazo = async (e) => {
+    e.preventDefault();
+    const id = mantenimientoARechazar.id;
+    setRevisandoId(id);
+    try {
+      const data = await apiClient.put(`/mantenimientos/${id}/rechazar`, { motivo_rechazo: motivoRechazo });
+      reemplazarEnLista(data.mantenimiento);
+      showSuccessToast(data.message);
+      setMantenimientoARechazar(null);
+      setMotivoRechazo('');
+    } catch (err) {
+      showErrorToast(err instanceof ApiError ? err.message : 'No se pudo rechazar el registro.');
+    } finally {
+      setRevisandoId(null);
+    }
+  };
+
+  // El filtrado y la busqueda los hace el servidor (ver fetchData).
+  const mantenimientosFiltrados = mantenimientos;
 
   const renderCamposDinamicos = () => {
     switch (formData.tipo_mantenimiento) {
@@ -618,12 +687,12 @@ const MantenimientoScreen = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-800">Taller y Mantenimiento</h2>
-          <p className="text-slate-500 mt-1">Control predictivo de flota, cambios de aceite y auditoría de facturas.</p>
+          <p className="text-slate-500 mt-1">Registro de los trabajos hechos a cada unidad, para controlar que la flota esté operativa.</p>
         </div>
         <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <select 
             value={statusFilter} 
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => handleFiltroEstado(e.target.value)}
             className="w-full sm:w-auto px-4 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-yellow-400 outline-none text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
           >
             <option value="Todos">🔧 Todos los Estados</option>
@@ -634,7 +703,7 @@ const MantenimientoScreen = () => {
           <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input 
-              type="text" placeholder="Buscar unidad o trabajo..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              type="text" placeholder="Buscar unidad o trabajo..." value={searchTerm} onChange={(e) => handleBuscar(e.target.value)}
               className="w-full sm:w-64 pl-10 pr-4 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-yellow-400 outline-none shadow-sm"
             />
           </div>
@@ -643,6 +712,47 @@ const MantenimientoScreen = () => {
           </button>
         </div>
       </div>
+
+      {/* Bandeja de lo que enviaron los socios: hasta que no se apruebe,
+          la unidad sigue contando como pendiente en su portal. */}
+      {pendientesRevision.length > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-amber-200 flex items-center">
+            <ClipboardCheck className="w-5 h-5 mr-2 text-amber-600" />
+            <h3 className="font-bold text-amber-900">
+              {pendientesRevision.length} registro{pendientesRevision.length === 1 ? '' : 's'} enviado{pendientesRevision.length === 1 ? '' : 's'} por los socios
+            </h3>
+          </div>
+          <div className="divide-y divide-amber-100">
+            {pendientesRevision.map((m) => (
+              <div key={m.id} className="px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-bold text-slate-800">
+                    Unidad {m.vehiculo?.numero_vehiculo} · {m.tipo_mantenimiento}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {m.vehiculo?.socio?.nombre} · {new Date(m.fecha_mantenimiento).toLocaleDateString()} · {m.kilometraje_actual} km
+                  </p>
+                  {m.observaciones && <p className="text-xs text-slate-500 mt-1 max-w-xl">{m.observaciones}</p>}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {m.comprobante_ruta && (
+                    <button onClick={() => verComprobante(m.id)} className="text-xs font-bold text-blue-600 bg-white border border-blue-200 px-3 py-2 rounded-lg hover:bg-blue-50 flex items-center">
+                      <FileText className="w-3.5 h-3.5 mr-1" /> Ver respaldo
+                    </button>
+                  )}
+                  <button onClick={() => aprobarMantenimiento(m.id)} disabled={revisandoId === m.id} className="text-xs font-bold text-white bg-green-600 px-3 py-2 rounded-lg hover:bg-green-700 disabled:bg-slate-300">
+                    {revisandoId === m.id ? 'Guardando...' : 'Aprobar'}
+                  </button>
+                  <button onClick={() => setMantenimientoARechazar(m)} disabled={revisandoId === m.id} className="text-xs font-bold text-red-600 bg-white border border-red-200 px-3 py-2 rounded-lg hover:bg-red-50 disabled:opacity-50">
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
@@ -653,7 +763,7 @@ const MantenimientoScreen = () => {
               <th className="p-4">Unidad / Socio</th>
               <th className="p-4">Kilometraje</th>
               <th className="p-4">Trabajo Realizado</th>
-              <th className="p-4">Costo / Factura</th>
+              <th className="p-4">Respaldo</th>
               <th className="p-4 text-center">Acciones</th>
             </tr>
           </thead>
@@ -679,6 +789,14 @@ const MantenimientoScreen = () => {
                       <option key={estado} value={estado}>{estado}</option>
                     ))}
                   </select>
+                  {/* Un registro del socio sin revisar todavia no pone la
+                      unidad al dia, aunque diga "Completado". */}
+                  {m.revision_estado === 'Pendiente' && (
+                    <div className="text-[10px] font-bold uppercase text-amber-600 mt-1">En revisión</div>
+                  )}
+                  {m.revision_estado === 'Rechazado' && (
+                    <div className="text-[10px] font-bold uppercase text-red-600 mt-1">Rechazado</div>
+                  )}
                 </td>
                 <td className="p-4">
                   <div className="font-bold">Vehi: {m.vehiculo?.numero_vehiculo ?? ''}</div>
@@ -700,15 +818,14 @@ const MantenimientoScreen = () => {
                   {m.observaciones && <div className="text-[10px] text-slate-500 mt-1 line-clamp-2 max-w-xs">{m.observaciones}</div>}
                 </td>
                 <td className="p-4">
-                  {m.estado === 'Completado' ? (
-                    <div className="font-bold text-green-600">${parseFloat(m.costo || 0).toFixed(2)}</div>
+                  {m.comprobante_ruta ? (
+                    <button type="button" onClick={() => verComprobante(m.id)} className="text-xs text-blue-500 flex items-center hover:underline font-semibold">
+                      <FileText className="w-3.5 h-3.5 mr-1" /> Ver respaldo
+                    </button>
+                  ) : m.estado === 'Completado' ? (
+                    <div className="text-xs font-bold uppercase text-amber-500">Sin respaldo</div>
                   ) : (
                     <div className="text-xs font-bold uppercase text-slate-400">Pendiente de cierre</div>
-                  )}
-                  {m.comprobante_ruta && (
-                    <button type="button" onClick={() => verComprobante(m.id)} className="text-[10px] text-blue-500 flex items-center mt-1 hover:underline">
-                      <FileText className="w-3 h-3 mr-1" /> Ver Factura
-                    </button>
                   )}
                 </td>
                 <td className="p-4 text-center">
@@ -726,6 +843,7 @@ const MantenimientoScreen = () => {
           </tbody>
         </table>
         </div>
+        <Paginacion meta={meta} onCambiarPagina={setPagina} />
       </div>
 
       {isModalOpen && (
@@ -784,10 +902,6 @@ const MantenimientoScreen = () => {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-4 pt-4 border-t border-slate-100">
-                <div className={formData.estado === 'Completado' ? '' : 'hidden'}>
-                  <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Costo Total ($)</label>
-                  <input type="text" inputMode="decimal" name="costo" value={formData.costo} onChange={handleInputChange} maxLength="9" required={formData.estado === 'Completado'} className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-yellow-400 text-green-700 font-bold" />
-                </div>
                 <div>
                   <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Estado Inicial</label>
                   <select name="estado" value={formData.estado} onChange={handleInputChange} className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-yellow-400 font-semibold text-slate-700">
@@ -803,12 +917,12 @@ const MantenimientoScreen = () => {
                 </div>
 
                 <div className={formData.estado === 'Completado' ? 'sm:col-span-2' : 'hidden'}>
-                  <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Comprobante de pago del mantenimiento</label>
+                  <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Respaldo del trabajo</label>
                   <div className="relative group">
-                    <input type="file" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" required={formData.estado === 'Completado'} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <input type="file" onChange={handleFileChange} accept="image/jpeg,image/png,application/pdf" required={formData.estado === 'Completado'} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                     <div className="border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl p-6 text-center group-hover:border-yellow-400 transition-colors">
                       <Upload className="w-6 h-6 mx-auto mb-2 text-slate-300 group-hover:text-yellow-500 transition-colors" />
-                      <p className="text-xs text-slate-500 font-medium">{file ? file.name : "Subir comprobante en PDF o imagen"}</p>
+                      <p className="text-xs text-slate-500 font-medium">{file ? file.name : "Factura, orden de taller o foto (PDF o imagen)"}</p>
                     </div>
                   </div>
                 </div>
@@ -830,15 +944,10 @@ const MantenimientoScreen = () => {
               <button onClick={() => setIsUploadModalOpen(false)}><X className="w-6 h-6 text-slate-400" /></button>
             </div>
             <form onSubmit={handleUploadSubmit} className="p-4 sm:p-6 space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
-              <p className="text-sm text-slate-600">Para marcar este registro como <span className="text-green-600 font-bold">Completado</span>, registra kilometraje, detalles del trabajo, costo, descripcion y comprobante de pago.</p>
+              <p className="text-sm text-slate-600">Para marcar este registro como <span className="text-green-600 font-bold">Completado</span>, registra kilometraje, detalles del trabajo, descripcion y el respaldo del trabajo.</p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {renderCamposCierre(completionData, handleCompletionChange, mantenimientos.find(item => item.id === mantenimientoIdToComplete)?.tipo_mantenimiento ?? '')}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Costo Total ($)</label>
-                <input type="text" inputMode="decimal" name="costo" value={completionData.costo} onChange={handleCompletionChange} maxLength="9" required className="w-full px-4 py-3 bg-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-green-500 text-green-700 font-bold" />
               </div>
 
               <div>
@@ -847,18 +956,58 @@ const MantenimientoScreen = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Comprobante de pago</label>
+                <label className="block text-xs font-bold mb-1 uppercase text-slate-400">Respaldo del trabajo</label>
                 <div className="relative group">
-                  <input type="file" onChange={(e) => setUploadFile(e.target.files[0])} accept=".pdf,.jpg,.jpeg,.png" required className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                  <input type="file" onChange={(e) => setUploadFile(e.target.files[0])} accept="image/jpeg,image/png,application/pdf" required className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                   <div className="border-2 border-dashed border-slate-200 bg-slate-50 rounded-2xl p-6 text-center group-hover:border-green-500 transition-colors">
                     <Upload className="w-6 h-6 mx-auto mb-2 text-slate-300 group-hover:text-green-500" />
-                    <p className="text-xs text-slate-500 font-medium">{uploadFile ? uploadFile.name : "Subir PDF o Imagen corporativa"}</p>
+                    <p className="text-xs text-slate-500 font-medium">{uploadFile ? uploadFile.name : "Factura, orden de taller o foto (PDF o imagen)"}</p>
                   </div>
                 </div>
               </div>
 
               <button type="submit" disabled={isSubmitting} className="w-full py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 flex justify-center items-center shadow-md transition-colors">
                 {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />} Guardar y Finalizar
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Rechazar exige motivo: el socio lo ve en su portal y sabe que corregir. */}
+      {mantenimientoARechazar && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:items-center bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="flex justify-between items-start p-4 pb-2 sm:p-6 sm:pb-2">
+              <div className="min-w-0">
+                <h3 className="text-xl font-bold text-slate-900">Rechazar registro</h3>
+                <p className="text-slate-500 mt-1 text-sm">
+                  Unidad {mantenimientoARechazar.vehiculo?.numero_vehiculo} · {mantenimientoARechazar.tipo_mantenimiento}
+                </p>
+              </div>
+              <button onClick={() => { setMantenimientoARechazar(null); setMotivoRechazo(''); }} className="text-slate-400 hover:text-slate-600 p-1">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={confirmarRechazo} className="p-4 pt-4 sm:p-6 sm:pt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-800 mb-1">Motivo del rechazo</label>
+                <textarea
+                  value={motivoRechazo} onChange={(e) => setMotivoRechazo(limitText(e.target.value, 300))}
+                  required rows="3" placeholder="Ej. El respaldo no se lee / la fecha no coincide con la factura."
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-400 text-slate-700 resize-none"
+                />
+                <p className="text-xs text-slate-400 mt-1">El socio verá este mensaje y podrá volver a enviarlo.</p>
+              </div>
+
+              <button
+                type="submit" disabled={revisandoId === mantenimientoARechazar.id}
+                className="w-full py-3 rounded-xl font-bold bg-red-600 text-white hover:bg-red-700 disabled:bg-slate-300 flex items-center justify-center transition-colors shadow-md"
+              >
+                {revisandoId === mantenimientoARechazar.id
+                  ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Guardando...</>
+                  : 'Rechazar registro'}
               </button>
             </form>
           </div>

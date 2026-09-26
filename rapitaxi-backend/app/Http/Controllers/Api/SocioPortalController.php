@@ -4,8 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Aportacion;
+use App\Models\ConfiguracionMantenimiento;
+use App\Models\Mantenimiento;
 use App\Models\Socio;
+use App\Models\Vehiculo;
+use App\Services\PlanMantenimiento;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Todo lo que un usuario con rol "socio" puede hacer por si mismo: ver su
@@ -55,7 +60,8 @@ class SocioPortalController extends Controller
                 'numero_vehiculo' => $v->numero_vehiculo,
                 'placa' => $v->placa,
                 'marca' => $v->marca,
-                'modelo' => $v->modelo,
+                'tipo_vehiculo' => $v->tipo_vehiculo,
+                'combustible' => $v->combustible,
                 'anio_fabricacion' => $v->anio_fabricacion,
                 'color' => $v->color,
             ])->values(),
@@ -91,8 +97,8 @@ class SocioPortalController extends Controller
         $socio = $this->socioAutenticado($request);
 
         $validated = $request->validate([
-            'telefono' => 'nullable|digits:10',
-            'correo' => 'nullable|email|max:100',
+            'telefono' => ['required', 'regex:/^0[0-9]{9}$/'],
+            'correo' => 'required|email|max:100',
             'direccion' => 'nullable|string|max:150',
         ]);
 
@@ -116,6 +122,104 @@ class SocioPortalController extends Controller
             ->map(fn (Aportacion $a) => $this->aportacionPublica($a));
 
         return response()->json($aportaciones, 200);
+    }
+
+    // 5. Mis unidades con el estado de cada mantenimiento: que le toca a
+    // cual y cuando. Si tengo varias unidades, cada una viene por separado
+    // para saber a cual hay que llevar al taller.
+    public function misUnidades(Request $request, PlanMantenimiento $plan)
+    {
+        $socio = $this->socioAutenticado($request);
+        $vehiculos = $socio->vehiculos()->orderBy('numero_vehiculo')->get();
+
+        $unidades = $plan->paraVehiculos($vehiculos);
+
+        // Lo que ya envie y el staff todavia no revisa, para no pedirlo dos veces.
+        $pendientes = Mantenimiento::whereIn('vehiculo_id', $vehiculos->pluck('id'))
+            ->where('revision_estado', 'Pendiente')
+            ->get(['id', 'vehiculo_id', 'tipo_mantenimiento', 'fecha_mantenimiento']);
+
+        $rechazados = Mantenimiento::whereIn('vehiculo_id', $vehiculos->pluck('id'))
+            ->where('revision_estado', 'Rechazado')
+            ->orderByDesc('revisado_en')
+            ->get(['id', 'vehiculo_id', 'tipo_mantenimiento', 'fecha_mantenimiento', 'motivo_rechazo']);
+
+        foreach ($unidades as &$unidad) {
+            $unidad['pendientes_revision'] = $pendientes->where('vehiculo_id', $unidad['id'])->values();
+            $unidad['rechazados'] = $rechazados->where('vehiculo_id', $unidad['id'])->values();
+        }
+
+        return response()->json([
+            'unidades' => $unidades,
+            'tipos_mantenimiento' => ConfiguracionMantenimiento::orderBy('tipo_mantenimiento')->pluck('tipo_mantenimiento'),
+        ], 200);
+    }
+
+    // 6. Registrar el mantenimiento que le hice a mi unidad. Igual que la
+    // aportacion: queda "Pendiente" y solo pone la unidad al dia cuando el
+    // staff confirma el respaldo (factura, orden de taller o foto).
+    public function registrarMantenimiento(Request $request, $vehiculoId)
+    {
+        $socio = $this->socioAutenticado($request);
+
+        $vehiculo = Vehiculo::where('id', $vehiculoId)->where('socio_id', $socio->id)->first();
+
+        if (! $vehiculo) {
+            return response()->json(['message' => 'Esta unidad no esta registrada a tu nombre.'], 404);
+        }
+
+        $tiposValidos = ConfiguracionMantenimiento::pluck('tipo_mantenimiento')->all();
+
+        $request->validate([
+            'tipo_mantenimiento' => ['required', Rule::in($tiposValidos)],
+            'fecha_mantenimiento' => 'required|date|before_or_equal:today|after_or_equal:' . now()->subYear()->toDateString(),
+            'kilometraje_actual' => 'required|integer|min:1|max:9999999',
+            'observaciones' => 'required|string|max:800',
+            'comprobante' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $yaEnviado = Mantenimiento::where('vehiculo_id', $vehiculo->id)
+            ->where('tipo_mantenimiento', $request->tipo_mantenimiento)
+            ->where('revision_estado', 'Pendiente')
+            ->exists();
+
+        if ($yaEnviado) {
+            return response()->json([
+                'message' => 'Ya enviaste un registro de este tipo para esta unidad y sigue pendiente de revision.',
+            ], 422);
+        }
+
+        // El odometro solo sube: un km menor al del ultimo trabajo aprobado
+        // es un error de digitacion.
+        app(MantenimientoController::class)->validarKilometrajeNoRetrocede(
+            $vehiculo->id,
+            (int) $request->kilometraje_actual,
+            (string) $request->fecha_mantenimiento
+        );
+
+        $ruta = $request->file('comprobante')->store('comprobantes_mantenimiento', 's3');
+
+        $mantenimiento = Mantenimiento::create([
+            'vehiculo_id' => $vehiculo->id,
+            'tipo_mantenimiento' => $request->tipo_mantenimiento,
+            'fecha_mantenimiento' => $request->fecha_mantenimiento,
+            'kilometraje_actual' => $request->kilometraje_actual,
+            'observaciones' => $request->observaciones,
+            'comprobante_ruta' => $ruta,
+            'estado' => 'Completado',
+            'revision_estado' => 'Pendiente',
+            'origen' => 'socio',
+        ]);
+
+        return response()->json([
+            'message' => 'Registro enviado. La unidad quedara al dia cuando el administrador lo confirme.',
+            'mantenimiento' => [
+                'id' => $mantenimiento->id,
+                'vehiculo_id' => $mantenimiento->vehiculo_id,
+                'tipo_mantenimiento' => $mantenimiento->tipo_mantenimiento,
+                'fecha_mantenimiento' => $mantenimiento->fecha_mantenimiento,
+            ],
+        ], 201);
     }
 
     // 4. Subir el comprobante de mi pago mensual. Queda "Pendiente" hasta

@@ -6,7 +6,7 @@ import { confirmDialog } from '../utils/confirmDialog';
 import { limitText, onlyDigits } from '../utils/inputFormatters';
 import { apiClient, ApiError } from '../lib/apiClient';
 import { useAuth } from '../features/auth/AuthContext';
-import { isValidCedulaEc } from '../utils/validators';
+import { isValidCedulaEc, isValidEmail, isValidNombrePersona, isValidTelefonoEc } from '../utils/validators';
 
 const SociosScreen = () => {
   // ==========================================
@@ -169,8 +169,26 @@ const SociosScreen = () => {
       return;
     }
 
-    if (formData.cedula.trim() !== '' && !isValidCedulaEc(formData.cedula.trim())) {
-      setFormError('La cédula no es válida: revisa que los 10 dígitos estén bien escritos.');
+    if (!isValidNombrePersona(formData.nombre)) {
+      setFormError('El nombre debe tener solo letras y espacios (sin números), entre 3 y 80 caracteres.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!isValidCedulaEc(formData.cedula.trim())) {
+      setFormError('La cédula es obligatoria y debe ser válida: revisa que los 10 dígitos estén bien escritos.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!isValidTelefonoEc(formData.telefono.trim())) {
+      setFormError('El teléfono es obligatorio: deben ser 10 dígitos y empezar en 0.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!isValidEmail(formData.correo.trim())) {
+      setFormError('El correo es obligatorio y debe tener un formato válido.');
       setIsSubmitting(false);
       return;
     }
@@ -515,8 +533,8 @@ const SociosScreen = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Cédula (Opcional)</label>
-                    <input type="text" name="cedula" value={formData.cedula} onChange={handleInputChange} inputMode="numeric" pattern="[0-9]{10}" maxLength="10" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Cedula de 10 digitos" />
+                    <label className="block text-sm font-semibold text-slate-800 mb-1">Cédula</label>
+                    <input type="text" name="cedula" value={formData.cedula} onChange={handleInputChange} required inputMode="numeric" pattern="[0-9]{10}" maxLength="10" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Cedula de 10 digitos" />
                   </div>
 
                   <div>
@@ -543,12 +561,12 @@ const SociosScreen = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Teléfono (Opcional)</label>
-                    <input type="text" name="telefono" value={formData.telefono} onChange={handleInputChange} inputMode="numeric" pattern="[0-9]{10}" maxLength="10" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Telefono de 10 digitos" />
+                    <label className="block text-sm font-semibold text-slate-800 mb-1">Teléfono</label>
+                    <input type="text" name="telefono" value={formData.telefono} onChange={handleInputChange} required inputMode="numeric" pattern="[0-9]{10}" maxLength="10" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="Telefono de 10 digitos" />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Correo (Opcional)</label>
-                    <input type="email" name="correo" value={formData.correo} onChange={handleInputChange} maxLength="100" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="correo@ejemplo.com" />
+                    <label className="block text-sm font-semibold text-slate-800 mb-1">Correo</label>
+                    <input type="email" name="correo" value={formData.correo} onChange={handleInputChange} required maxLength="100" className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700" placeholder="correo@ejemplo.com" />
                   </div>
                 </div>
 

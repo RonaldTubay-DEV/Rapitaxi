@@ -7,6 +7,8 @@ import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
 import { limitText } from '../utils/inputFormatters';
+import Paginacion from '../components/Paginacion';
+
 const RevisionesScreen = () => {
   // ==========================================
   // ESTADOS
@@ -16,6 +18,11 @@ const RevisionesScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // La busqueda y la paginacion las resuelve el servidor: filtrar en el
+  // navegador solo alcanzaria a la pagina que se esta viendo.
+  const [pagina, setPagina] = useState(1);
+  const [meta, setMeta] = useState(null);
 
   // Modal y Formulario
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -46,36 +53,60 @@ const RevisionesScreen = () => {
   // ==========================================
   // FUNCIONES DE API
   // ==========================================
-  const fetchData = async () => {
+  // sigueVigente() descarta una respuesta que llega tarde: si el usuario ya
+  // cambio de pagina o de busqueda, aplicarla mostraria datos equivocados.
+  const fetchData = async (sigueVigente = () => true) => {
     setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
 
-      const [resRevisiones, resVehiculos] = await Promise.all([
-        fetch(`${API_URL}/revisiones`, { headers }),
-        fetch(`${API_URL}/vehiculos`, { headers })
-      ]);
+      const params = new URLSearchParams({ page: pagina });
+      if (searchTerm.trim()) params.set('search', searchTerm.trim());
 
-      if (resRevisiones.ok && resVehiculos.ok) {
-        const dataR = await resRevisiones.json();
-        const dataV = await resVehiculos.json();
-        setRevisiones(dataR);
-        setVehiculos(dataV);
+      const resRevisiones = await fetch(`${API_URL}/revisiones?${params}`, { headers });
+
+      if (!sigueVigente()) return;
+
+      if (resRevisiones.ok) {
+        const { data, ...paginacion } = await resRevisiones.json();
+        setRevisiones(data);
+        setMeta(paginacion);
       } else {
         setError('Error al cargar la bitácora de revisiones.');
       }
     } catch (err) {
-      setError('Error de conexión con el servidor.');
+      if (sigueVigente()) setError('Error de conexión con el servidor.');
     } finally {
-      setIsLoading(false);
+      if (sigueVigente()) setIsLoading(false);
     }
   };
 
+  // Al escribir en el buscador se espera medio segundo antes de consultar,
+  // para no disparar una peticion por cada tecla.
+  // Los vehiculos alimentan el selector del formulario: no cambian al pasar
+  // de pagina, asi que se piden una sola vez al entrar.
   useEffect(() => {
-    fetchData();
+    fetch(`${API_URL}/vehiculos`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}`, Accept: 'application/json' },
+    })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setVehiculos)
+      .catch(() => setVehiculos([]));
   }, []);
+
+  useEffect(() => {
+    let vigente = true;
+    const temporizador = setTimeout(() => { fetchData(() => vigente); }, searchTerm ? 500 : 0);
+    return () => { vigente = false; clearTimeout(temporizador); };
+  }, [pagina, searchTerm]);
+
+  // Una busqueda nueva siempre arranca en la primera pagina.
+  const handleBuscar = (valor) => {
+    setSearchTerm(valor);
+    setPagina(1);
+  };
 
   // ==========================================
   // MANEJADORES DE EVENTOS
@@ -186,13 +217,8 @@ const RevisionesScreen = () => {
     } catch (err) { showErrorToast('Error de conexión.'); }
   };
 
-  const revisionesFiltradas = revisiones.filter(r => {
-    const term = searchTerm.toLowerCase();
-      return (r.vehiculo?.socio?.nombre ?? '').toLowerCase().includes(term) || 
-        (r.vehiculo?.placa ?? '').toLowerCase().includes(term) ||
-        (r.vehiculo?.numero_vehiculo ?? '').includes(term) ||
-        (r.tipo ?? '').toLowerCase().includes(term);
-  });
+  // El filtrado lo hace el servidor (ver fetchData): la lista ya llega filtrada.
+  const revisionesFiltradas = revisiones;
 
   const getEstadoBadge = (estado) => {
     switch(estado) {
@@ -215,7 +241,7 @@ const RevisionesScreen = () => {
           <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input 
-              type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              type="text" value={searchTerm} onChange={(e) => handleBuscar(e.target.value)}
               placeholder="Buscar unidad, placa o trámite..." 
               className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
@@ -280,6 +306,7 @@ const RevisionesScreen = () => {
             </tbody>
           </table>
         </div>
+        <Paginacion meta={meta} onCambiarPagina={setPagina} />
       </div>
 
       {isModalOpen && (

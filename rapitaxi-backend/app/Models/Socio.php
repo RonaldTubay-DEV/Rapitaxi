@@ -35,7 +35,18 @@ class Socio extends Model
             ->useLogName('socios');
     }
 
-    protected $appends = ['estado_pago_actual', 'numero_vehiculo', 'placa', 'cuenta_activa'];
+    /**
+     * Atributos calculados que SOLO necesita la pantalla de Socios.
+     *
+     * No van en $appends: si fueran automaticos se calcularian tambien cuando
+     * el socio viaja anidado dentro de otra respuesta (una aportacion, un
+     * vehiculo, un mantenimiento), y cada uno dispara consultas propias.
+     * Listar 4.800 aportaciones con su socio costaba ~5.000 consultas por esto.
+     *
+     * Los controladores que alimentan esa pantalla los agregan a mano con
+     * ->append(Socio::ATRIBUTOS_CALCULADOS).
+     */
+    public const ATRIBUTOS_CALCULADOS = ['estado_pago_actual', 'numero_vehiculo', 'placa', 'cuenta_activa'];
 
     // 2. Renombra la relación y usa la clase Aportacion
     public function aportaciones()

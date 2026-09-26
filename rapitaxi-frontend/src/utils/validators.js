@@ -48,3 +48,17 @@ export const isValidCedulaEc = (value) => {
 
   return (10 - (suma % 10)) % 10 === Number(cedula[9]);
 };
+
+// Letras (con tildes y Ñ), espacios, apostrofes y guiones: nadie tiene
+// numeros ni simbolos como parte de su nombre. 3-80 caracteres: ni un
+// nombre de una sola letra ni uno de mas de 80 (una persona real no
+// tiene un nombre completo mas largo que eso).
+const NOMBRE_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ'\s-]{3,80}$/;
+
+export const isValidNombrePersona = (value) => NOMBRE_REGEX.test(String(value ?? '').trim());
+
+/**
+ * Telefono ecuatoriano: 10 digitos, siempre empieza en 0 (celular 09... o
+ * convencional 0X...). Es la misma regla que aplica el backend.
+ */
+export const isValidTelefonoEc = (value) => /^0\d{9}$/.test(String(value ?? '').trim());

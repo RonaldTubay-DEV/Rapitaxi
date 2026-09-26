@@ -3,6 +3,7 @@ import { Loader2, Save, CarFront, AlertCircle, Phone, Mail, MapPin, IdCard } fro
 import { apiClient, ApiError } from '../../lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../../utils/feedback';
 import { onlyDigits, limitText } from '../../utils/inputFormatters';
+import { isValidEmail, isValidTelefonoEc } from '../../utils/validators';
 
 const initialesDe = (nombre) => (nombre || '')
   .trim()
@@ -50,6 +51,17 @@ const MiPerfilScreen = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!isValidTelefonoEc(formData.telefono.trim())) {
+      showErrorToast('El teléfono es obligatorio: deben ser 10 dígitos y empezar en 0.');
+      return;
+    }
+
+    if (!isValidEmail(formData.correo.trim())) {
+      showErrorToast('El correo es obligatorio y debe tener un formato válido.');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const data = await apiClient.put('/mi-perfil', formData);
@@ -120,7 +132,7 @@ const MiPerfilScreen = () => {
                 <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text" name="telefono" value={formData.telefono} onChange={handleInputChange}
-                  inputMode="numeric" pattern="[0-9]{10}" maxLength="10"
+                  required inputMode="numeric" pattern="[0-9]{10}" maxLength="10"
                   placeholder="Teléfono de 10 dígitos"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700"
                 />
@@ -132,7 +144,7 @@ const MiPerfilScreen = () => {
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="email" name="correo" value={formData.correo} onChange={handleInputChange}
-                  maxLength="100" placeholder="correo@ejemplo.com"
+                  required maxLength="100" placeholder="correo@ejemplo.com"
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-700"
                 />
               </div>
@@ -173,7 +185,7 @@ const MiPerfilScreen = () => {
                   <CarFront className="w-5 h-5 text-yellow-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-slate-800 truncate">Unidad {v.numero_vehiculo} · {v.marca} {v.modelo}</p>
+                  <p className="font-bold text-slate-800 truncate">Unidad {v.numero_vehiculo} · {v.marca} · {v.tipo_vehiculo}</p>
                   <span className="inline-block mt-1 px-2 py-0.5 rounded border-2 border-slate-800 bg-yellow-300 text-slate-900 text-xs font-extrabold tracking-wider font-mono">
                     {v.placa}
                   </span>

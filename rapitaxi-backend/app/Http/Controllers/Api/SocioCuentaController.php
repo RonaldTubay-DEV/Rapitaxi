@@ -42,7 +42,7 @@ class SocioCuentaController extends Controller
 
         return response()->json([
             'message' => 'Cuenta de acceso creada exitosamente.',
-            'socio' => $socio->fresh(),
+            'socio' => $socio->fresh()->append(Socio::ATRIBUTOS_CALCULADOS),
         ], 201);
     }
 
@@ -65,7 +65,7 @@ class SocioCuentaController extends Controller
 
         return response()->json([
             'message' => $validated['activa'] ? 'Cuenta activada exitosamente.' : 'Cuenta desactivada exitosamente.',
-            'socio' => $socio->fresh(),
+            'socio' => $socio->fresh()->append(Socio::ATRIBUTOS_CALCULADOS),
         ], 200);
     }
 }

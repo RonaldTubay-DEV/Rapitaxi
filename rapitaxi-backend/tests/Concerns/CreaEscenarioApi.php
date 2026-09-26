@@ -45,6 +45,8 @@ trait CreaEscenarioApi
         $registro = Socio::create($socio + [
             'nombre' => 'Socio de Prueba',
             'cedula' => $this->cedulaValida(1),
+            'telefono' => '0991234567',
+            'correo' => 'socio.prueba@rapitaxi.test',
             'estado' => 'Activo',
             'observaciones' => 'NOTA INTERNA: solo para la administracion',
         ]);
@@ -61,7 +63,8 @@ trait CreaEscenarioApi
             'numero_vehiculo' => '012-01',
             'placa' => 'MBC-4650',
             'marca' => 'KIA',
-            'modelo' => 'Cerato',
+            'tipo_vehiculo' => 'Sedán',
+            'combustible' => 'Gasolina',
             'anio_fabricacion' => 2015,
             'color' => 'Amarillo',
         ]);

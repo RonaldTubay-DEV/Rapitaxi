@@ -4,6 +4,11 @@ import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
 import { formatPlate, formatUnitNumber, limitText, onlyDigits } from '../utils/inputFormatters';
+
+// Igual a como la ANT/GAD clasifica "TIPO" en la resolucion de habilitacion.
+const TIPOS_VEHICULO = ['Sedán', 'Hatchback', 'SUV', 'Station Wagon', 'Furgoneta', 'Pickup', 'Van'];
+const COMBUSTIBLES = ['Gasolina', 'Diesel', 'GLP', 'Eléctrico', 'Híbrido'];
+
 const VehiculosScreen = () => {
   const [vehiculos, setVehiculos] = useState([]);
   const [socios, setSocios] = useState([]); // Para el selector
@@ -21,7 +26,8 @@ const VehiculosScreen = () => {
     numero_vehiculo: '',
     placa: '',
     marca: '',
-    modelo: '',
+    tipo_vehiculo: TIPOS_VEHICULO[0],
+    combustible: COMBUSTIBLES[0],
     anio_fabricacion: ''
   });
 
@@ -54,14 +60,13 @@ const VehiculosScreen = () => {
       numero_vehiculo: formatUnitNumber,
       placa: formatPlate,
       marca: (input) => limitText(input, 50),
-      modelo: (input) => limitText(input, 50),
       anio_fabricacion: (input) => onlyDigits(input, 4),
     };
     setFormData({ ...formData, [name]: formatters[name] ? formatters[name](value) : value });
   };
 
   const openCreateModal = () => {
-    setFormData({ socio_id: '', numero_vehiculo: '', placa: '', marca: '', modelo: '', anio_fabricacion: '' });
+    setFormData({ socio_id: '', numero_vehiculo: '', placa: '', marca: '', tipo_vehiculo: TIPOS_VEHICULO[0], combustible: COMBUSTIBLES[0], anio_fabricacion: '' });
     setEditingId(null);
     setFormError('');
     setIsModalOpen(true);
@@ -73,7 +78,8 @@ const VehiculosScreen = () => {
       numero_vehiculo: v.numero_vehiculo,
       placa: v.placa,
       marca: v.marca,
-      modelo: v.modelo,
+      tipo_vehiculo: v.tipo_vehiculo,
+      combustible: v.combustible,
       anio_fabricacion: v.anio_fabricacion
     });
     setEditingId(v.id);
@@ -193,8 +199,8 @@ const VehiculosScreen = () => {
                       <div className="font-semibold text-slate-800">{v.socio?.nombre}</div>
                     </td>
                     <td className="p-4">
-                      <div className="font-medium text-slate-700">{v.marca} {v.modelo}</div>
-                      <div className="text-xs text-slate-500">Año: {v.anio_fabricacion} | Color: Amarillo</div>
+                      <div className="font-medium text-slate-700">{v.marca} · {v.tipo_vehiculo}</div>
+                      <div className="text-xs text-slate-500">Año: {v.anio_fabricacion} | {v.combustible} | Color: Amarillo</div>
                     </td>
                     <td className="p-4 flex justify-center space-x-2">
                       <button onClick={() => openEditModal(v)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg"><Edit className="w-4 h-4" /></button>
@@ -251,12 +257,20 @@ const VehiculosScreen = () => {
                     <input type="text" name="marca" value={formData.marca} onChange={handleInputChange} required maxLength="50" placeholder="Ej. Chevrolet" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-800 mb-1">Modelo</label>
-                    <input type="text" name="modelo" value={formData.modelo} onChange={handleInputChange} required maxLength="50" placeholder="Ej. Aveo Family" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />
+                    <label className="block text-sm font-semibold text-slate-800 mb-1">Tipo de Vehículo</label>
+                    <select name="tipo_vehiculo" value={formData.tipo_vehiculo} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400">
+                      {TIPOS_VEHICULO.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-800 mb-1">Tipo de Combustible</label>
+                    <select name="combustible" value={formData.combustible} onChange={handleInputChange} required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400">
+                      {COMBUSTIBLES.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-800 mb-1">Año de Fabricación</label>
                     <input type="text" name="anio_fabricacion" value={formData.anio_fabricacion} onChange={handleInputChange} required inputMode="numeric" pattern="[0-9]{4}" maxLength="4" placeholder="Ej. 2018" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-yellow-400" />

@@ -15,6 +15,11 @@ class DashboardController extends Controller
     // unidad deja de contar como "al dia" aunque alguna vez la haya aprobado.
     private const MESES_VIGENCIA_REVISION = 12;
 
+    // Una unidad que lleva mas de medio año sin ningun mantenimiento
+    // registrado es la que hay que ir a revisar: el socio paga sus propios
+    // trabajos, pero la compañia necesita saber que la unidad sigue operativa.
+    private const MESES_SIN_MANTENIMIENTO = 6;
+
     public function stats()
     {
         $hoy = Carbon::now();
@@ -27,13 +32,12 @@ class DashboardController extends Controller
             ->whereHas('vehiculo')
             ->count();
 
-        // El gasto es dinero realmente pagado: cuenta aunque el vehiculo se
-        // haya dado de baja despues. Mes Y año, para no sumar el mismo mes de
-        // años anteriores.
-        $gastosMes = Mantenimiento::where('estado', 'Completado')
-            ->whereYear('fecha_mantenimiento', $hoy->year)
-            ->whereMonth('fecha_mantenimiento', $hoy->month)
-            ->sum('costo');
+        // Unidades que no tienen ningun mantenimiento completado dentro de la
+        // ventana: incluye tambien a las que nunca registraron ninguno.
+        $unidadesSinMantenimiento = Vehiculo::whereDoesntHave('mantenimientos', function ($query) use ($hoy) {
+            $query->where('estado', 'Completado')
+                ->where('fecha_mantenimiento', '>=', $hoy->copy()->subMonths(self::MESES_SIN_MANTENIMIENTO)->toDateString());
+        })->count();
 
         $vehiculosAlDia = Revision::where('estado', 'Aprobada')
             ->where('fecha_revision', '>=', $hoy->copy()->subMonths(self::MESES_VIGENCIA_REVISION)->toDateString())
@@ -41,7 +45,7 @@ class DashboardController extends Controller
             ->distinct()
             ->count('vehiculo_id');
 
-        // Solo los datos que la pantalla muestra: sin ruta del comprobante,
+        // Solo los datos que la pantalla muestra: sin ruta del respaldo,
         // ni cedula, telefono u observaciones del socio.
         $actividadReciente = Mantenimiento::with('vehiculo.socio')
             ->whereHas('vehiculo')
@@ -53,7 +57,6 @@ class DashboardController extends Controller
                 'tipo_mantenimiento' => $m->tipo_mantenimiento,
                 'estado' => $m->estado,
                 'fecha_mantenimiento' => $m->fecha_mantenimiento,
-                'costo' => $m->costo,
                 'vehiculo' => [
                     'numero_vehiculo' => $m->vehiculo->numero_vehiculo,
                     'socio' => ['nombre' => $m->vehiculo->socio?->nombre],
@@ -66,7 +69,8 @@ class DashboardController extends Controller
                 'flota_total' => $flotaTotal,
                 'vehiculos_al_dia' => $vehiculosAlDia,
                 'taller_pendientes' => $mantenimientosPendientes,
-                'gastos_mes' => $gastosMes,
+                'unidades_sin_mantenimiento' => $unidadesSinMantenimiento,
+                'meses_sin_mantenimiento' => self::MESES_SIN_MANTENIMIENTO,
             ],
             'actividad_reciente' => $actividadReciente,
         ], 200);

@@ -9,11 +9,30 @@ use Illuminate\Validation\Rule;
 
 class RevisionController extends Controller
 {
-    public function index()
+    // Paginado, con la busqueda resuelta en el servidor: filtrar en el
+    // navegador solo alcanzaria a la pagina que se esta viendo.
+    public function index(Request $request)
     {
-        // Traemos las revisiones junto con los datos del vehículo y su dueño
-        $revisiones = Revision::with('vehiculo.socio')->orderBy('fecha_revision', 'desc')->get();
-        return response()->json($revisiones, 200);
+        $query = Revision::with('vehiculo.socio')->orderBy('fecha_revision', 'desc');
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        if ($request->filled('search')) {
+            $termino = '%' . mb_strtolower($request->search) . '%';
+            $query->where(function ($q) use ($termino) {
+                $q->whereRaw('LOWER(tipo) LIKE ?', [$termino])
+                    ->orWhereHas('vehiculo', fn ($v) => $v
+                        ->whereRaw('LOWER(placa) LIKE ?', [$termino])
+                        ->orWhereRaw('LOWER(numero_vehiculo) LIKE ?', [$termino])
+                        ->orWhereHas('socio', fn ($s) => $s->whereRaw('LOWER(nombre) LIKE ?', [$termino])));
+            });
+        }
+
+        $porPagina = min(max((int) $request->input('per_page', 25), 1), 100);
+
+        return response()->json($query->paginate($porPagina), 200);
     }
 
     public function store(Request $request)

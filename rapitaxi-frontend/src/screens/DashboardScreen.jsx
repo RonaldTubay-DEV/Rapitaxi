@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Users, Car, Wrench, ShieldCheck, TrendingUp, 
-  Clock, AlertTriangle, Loader2, DollarSign 
+import {
+  Users, Car, Wrench, ShieldCheck, TrendingUp,
+  Clock, AlertTriangle, Loader2
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 const DashboardScreen = () => {
@@ -82,13 +82,24 @@ const DashboardScreen = () => {
           <div className="w-14 h-14 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center"><Wrench className="w-7 h-7" /></div>
         </div>
 
-        {/* KPI 4: Gastos */}
+        {/* KPI 4: Unidades descuidadas. El socio paga sus propios trabajos;
+            lo que la compañía necesita vigilar es que la unidad no lleve
+            medio año sin pasar por el taller. */}
         <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex items-center justify-between hover:shadow-md transition-shadow">
           <div>
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Gastos (Mes)</p>
-            <h3 className="text-3xl font-black text-green-600">${parseFloat(kpis.gastos_mes).toFixed(2)}</h3>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Sin Taller</p>
+            <h3 className={`text-4xl font-black ${kpis.unidades_sin_mantenimiento > 0 ? 'text-red-600' : 'text-slate-800'}`}>
+              {kpis.unidades_sin_mantenimiento}
+            </h3>
+            <p className="text-xs text-slate-400 font-medium mt-0.5 leading-tight">
+              +{kpis.meses_sin_mantenimiento} meses sin mantenimiento
+            </p>
           </div>
-          <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center"><DollarSign className="w-7 h-7" /></div>
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+            kpis.unidades_sin_mantenimiento > 0 ? 'bg-red-50 text-red-500' : 'bg-green-50 text-green-600'
+          }`}>
+            <AlertTriangle className="w-7 h-7" />
+          </div>
         </div>
 
       </div>
@@ -161,8 +172,12 @@ const DashboardScreen = () => {
                   </div>
                   
                   <div className="w-full text-left sm:w-auto sm:text-right">
-                    <p className="font-black text-slate-800">${parseFloat(mant.costo).toFixed(2)}</p>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{mant.estado}</span>
+                    <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      mant.estado === 'Completado' ? 'bg-green-100 text-green-700' :
+                      mant.estado === 'En Proceso' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {mant.estado}
+                    </span>
                   </div>
 
                 </div>

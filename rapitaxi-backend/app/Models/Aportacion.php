@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Facades\Schema;
 use App\Traits\TapsActivityWithRequestMeta;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -14,13 +13,11 @@ class Aportacion extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity, TapsActivityWithRequestMeta;
 
-    protected $table;
-
-    public function __construct(array $attributes = [])
-    {
-        parent::__construct($attributes);
-        $this->table = Schema::hasTable('aportaciones') ? 'aportaciones' : (Schema::hasTable('pagos') ? 'pagos' : 'aportaciones');
-    }
+    // La tabla se llamo "pagos" hasta la migracion que la renombro. Antes esto
+    // se resolvia con Schema::hasTable() dentro del constructor, que disparaba
+    // una consulta al esquema POR CADA modelo hidratado: listar 500 aportaciones
+    // costaba 500 consultas extra. El nombre es fijo desde esa migracion.
+    protected $table = 'aportaciones';
 
     protected $fillable = [
         'socio_id',

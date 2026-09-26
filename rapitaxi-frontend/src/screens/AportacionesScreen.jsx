@@ -5,6 +5,7 @@ import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
 import { normalizeDecimal, onlyDigits } from '../utils/inputFormatters';
 import { apiClient, ApiError } from '../lib/apiClient';
+import Paginacion from '../components/Paginacion';
 
 const ESTADO_ESTILO = {
   Pendiente: 'bg-amber-100 text-amber-700',
@@ -22,6 +23,13 @@ const AportacionesScreen = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
+
+  // El servidor pagina y filtra: esta tabla crece 12 filas por socio al año.
+  const [pagina, setPagina] = useState(1);
+  const [meta, setMeta] = useState(null);
+  // Se pide aparte porque el total de pendientes no puede salir de la pagina
+  // que se esta viendo: uno de la pagina 3 quedaria sin revisar.
+  const [pendientesCount, setPendientesCount] = useState(0);
 
   // Modal y Formulario
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,33 +57,71 @@ const AportacionesScreen = () => {
   // ==========================================
   // FUNCIONES DE API
   // ==========================================
-  const fetchData = async () => {
+  // sigueVigente() permite descartar una respuesta que llega tarde: si el
+  // usuario ya cambio de pagina o de busqueda, aplicarla mostraria datos que
+  // no corresponden a lo que pidio.
+  const fetchData = async (sigueVigente = () => true) => {
     setIsLoading(true);
     setError('');
     try {
       const token = localStorage.getItem('auth_token');
       const headers = { 'Accept': 'application/json', 'Authorization': `Bearer ${token}` };
 
-      // Conexión a la nueva ruta /api/aportaciones
-      const [resAportaciones, resSocios] = await Promise.all([
-        fetch(`${API_URL}/aportaciones`, { headers }),
-        fetch(`${API_URL}/socios`, { headers })
-      ]);
+      const params = new URLSearchParams({ page: pagina });
+      if (filtroEstado !== 'Todos') params.set('estado', filtroEstado);
+      if (searchTerm.trim()) params.set('search', searchTerm.trim());
 
-      if (resAportaciones.ok && resSocios.ok) {
-        setAportaciones(await resAportaciones.json());
-        setSocios(await resSocios.json());
+      const resAportaciones = await fetch(`${API_URL}/aportaciones?${params}`, { headers });
+
+      if (!sigueVigente()) return;
+
+      if (resAportaciones.ok) {
+        const { data, ...paginacion } = await resAportaciones.json();
+        setAportaciones(data);
+        setMeta(paginacion);
       } else {
         setError('Error al cargar la información. Revisa que el servidor backend esté funcionando.');
       }
     } catch (err) {
-      setError('Error de conexión con el servidor.');
+      if (sigueVigente()) setError('Error de conexión con el servidor.');
     } finally {
-      setIsLoading(false);
+      if (sigueVigente()) setIsLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  // Los socios alimentan el selector del formulario y el contador de
+  // pendientes: no cambian al pasar de pagina, asi que se piden una sola vez.
+  useEffect(() => {
+    const headers = { Accept: 'application/json', Authorization: `Bearer ${localStorage.getItem('auth_token')}` };
+
+    Promise.all([
+      fetch(`${API_URL}/socios`, { headers }).then((r) => (r.ok ? r.json() : [])),
+      fetch(`${API_URL}/aportaciones?estado=Pendiente&per_page=1`, { headers }).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([listaSocios, pendientes]) => {
+        setSocios(listaSocios);
+        setPendientesCount(pendientes?.total ?? 0);
+      })
+      .catch(() => setSocios([]));
+  }, []);
+
+  // Medio segundo de espera al escribir, para no consultar en cada tecla.
+  useEffect(() => {
+    let vigente = true;
+    const temporizador = setTimeout(() => { fetchData(() => vigente); }, searchTerm ? 500 : 0);
+    return () => { vigente = false; clearTimeout(temporizador); };
+  }, [pagina, searchTerm, filtroEstado]);
+
+  // Cambiar de filtro o de busqueda siempre vuelve a la primera pagina.
+  const handleBuscar = (valor) => {
+    setSearchTerm(valor);
+    setPagina(1);
+  };
+
+  const handleFiltroEstado = (valor) => {
+    setFiltroEstado(valor);
+    setPagina(1);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -157,6 +203,7 @@ const AportacionesScreen = () => {
     try {
       const data = await apiClient.put(`/aportaciones/${aportacion.id}/aprobar`);
       setAportaciones(aportaciones.map((a) => (a.id === aportacion.id ? data.aportacion : a)));
+      setPendientesCount((n) => Math.max(0, n - 1));
       showSuccessToast('Comprobante aprobado exitosamente.');
     } catch (err) {
       showErrorToast(err instanceof ApiError ? err.message : 'No se pudo aprobar.');
@@ -176,6 +223,7 @@ const AportacionesScreen = () => {
     try {
       const data = await apiClient.put(`/aportaciones/${aportacionARechazar.id}/rechazar`, { motivo_rechazo: motivoRechazo });
       setAportaciones(aportaciones.map((a) => (a.id === aportacionARechazar.id ? data.aportacion : a)));
+      setPendientesCount((n) => Math.max(0, n - 1));
       showSuccessToast('Comprobante rechazado.');
       setAportacionARechazar(null);
     } catch (err) {
@@ -187,14 +235,8 @@ const AportacionesScreen = () => {
 
   const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
-  const aportacionesFiltradas = aportaciones.filter(a => {
-    if (filtroEstado !== 'Todos' && a.estado !== filtroEstado) return false;
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (a.socio?.nombre ?? '').toLowerCase().includes(term);
-  });
-
-  const pendientesCount = aportaciones.filter((a) => a.estado === 'Pendiente').length;
+  // El filtrado y la busqueda los hace el servidor (ver fetchData).
+  const aportacionesFiltradas = aportaciones;
 
   return (
     <div className="p-4 sm:p-6 lg:p-10 relative">
@@ -212,7 +254,7 @@ const AportacionesScreen = () => {
         </div>
         <div className="mt-4 md:mt-0 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
           <select
-            value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}
+            value={filtroEstado} onChange={(e) => handleFiltroEstado(e.target.value)}
             className="w-full sm:w-auto px-4 py-2 border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-yellow-400 outline-none text-sm font-semibold text-slate-700 shadow-sm cursor-pointer"
           >
             <option value="Todos">Todos los estados</option>
@@ -223,7 +265,7 @@ const AportacionesScreen = () => {
           <div className="relative w-full sm:w-auto">
             <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
-              type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+              type="text" value={searchTerm} onChange={(e) => handleBuscar(e.target.value)}
               placeholder="Buscar socio..."
               className="w-full sm:w-72 pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400 bg-white"
             />
@@ -300,6 +342,7 @@ const AportacionesScreen = () => {
             </tbody>
           </table>
         </div>
+        <Paginacion meta={meta} onCambiarPagina={setPagina} />
       </div>
 
       {/* MODAL PARA REGISTRAR APORTACIÓN (Que faltaba en tu código) */}
