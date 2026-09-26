@@ -22,3 +22,7 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Respaldos de la base: contienen datos personales de los socios (cedulas,
+# telefonos, correos). Nunca deben subirse al repositorio.
+/respaldos

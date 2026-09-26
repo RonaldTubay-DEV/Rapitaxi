@@ -277,7 +277,75 @@ Dos archivos en `public/` se copian tal cual a la compilación:
 > Si cambia el dominio de la API, hay que actualizar también `connect-src` en
 > `_headers`, o el navegador bloqueará las llamadas.
 
-### 5.3 Base de datos en Render
+### 5.3 Respaldos de la base de datos
+
+**Sin respaldo, lo que se pierde no se recupera.** Los archivos (PDF, fotos) viven
+en Cloudflare R2 y sobreviven aparte, pero la base guarda el *significado* de esos
+archivos: qué documento es cada uno, de qué socio y cuándo vence. Si se pierde la
+base, R2 queda con cientos de archivos de nombre aleatorio que nadie puede
+identificar.
+
+La base es pequeña —unos pocos megas incluso con la cooperativa entera cargada—
+porque el peso está en R2. Respaldarla es rápido y barato.
+
+#### Crear un respaldo
+
+```powershell
+cd rapitaxi-backend
+.\scripts\respaldar-bd.ps1
+```
+
+Genera `respaldos\rapitaxi_AAAA-MM-DD_HHMM.dump` leyendo las credenciales del
+`.env`. Para respaldar producción, se apunta a otro archivo de entorno:
+
+```powershell
+.\scripts\respaldar-bd.ps1 -Env .env.render
+```
+
+> **La carpeta `respaldos/` está en `.gitignore` a propósito.** Un respaldo
+> contiene cédulas, teléfonos y correos de los socios: subirlo a GitHub sería
+> filtrar datos personales.
+
+#### Restaurar
+
+Para **verificar** que un respaldo sirve, se restaura en una base aparte:
+
+```powershell
+.\scripts\restaurar-bd.ps1 -Archivo respaldos\rapitaxi_2026-09-25_2244.dump -BaseDestino rapitaxi_verificacion
+```
+
+Para restaurar **sobre la base real** (reemplaza lo que haya), se omite
+`-BaseDestino`. El script pide escribir el nombre de la base para confirmar.
+
+#### Verificar que el respaldo sirve
+
+Un respaldo que nunca se restauró no es un respaldo, es un archivo. Conviene
+comprobarlo al menos una vez y después de cada cambio de esquema:
+
+```bash
+# Contar filas en la base original y en la restaurada; deben coincidir
+psql -U postgres -d rapitaxi -c "SELECT count(*) FROM socios"
+psql -U postgres -d rapitaxi_verificacion -c "SELECT count(*) FROM socios"
+```
+
+> Verificado el 25/09/2026: el respaldo restauró las 9 tablas con el mismo número
+> de filas, 54 índices y 12 claves foráneas, idénticos al original.
+
+#### Cuándo respaldar
+
+| Momento | Por qué |
+|---|---|
+| Antes de cada despliegue con migraciones | Una migración mal hecha puede perder datos |
+| Antes de cargar datos masivamente | Para poder volver atrás si la carga sale mal |
+| Periódicamente con datos reales | Diario o semanal según cuánto se mueva |
+
+> **El respaldo manual es el mínimo, no la solución definitiva.** Depende de que
+> alguien se acuerde de ejecutarlo. Con datos reales en producción conviene un
+> plan de base de datos con respaldos automáticos (ver abajo).
+
+---
+
+### 5.4 Base de datos en Render
 
 **El plan gratuito caduca a los 30 días y no incluye respaldos.**
 

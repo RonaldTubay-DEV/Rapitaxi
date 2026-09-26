@@ -117,7 +117,7 @@ vencido según el plan.
 
 | Pendiente | Por qué es crítico |
 |---|---|
-| **Base de datos con respaldos** | El plan gratuito de Render caduca a los 30 días y no respalda nada. Perder la base sería perder todo |
+| **Base de datos con respaldos automáticos** | El plan gratuito de Render caduca a los 30 días y no respalda nada. Ya existe respaldo manual (`scripts/respaldar-bd.ps1`), pero depende de que alguien lo ejecute |
 | **Verificar `APP_DEBUG=false`** | En `true`, un error muestra rutas internas y configuración |
 | **Verificar que R2 sea privado** | Un bucket público expondría cédulas escaneadas |
 | **Cambiar la clave del admin inicial** | |
