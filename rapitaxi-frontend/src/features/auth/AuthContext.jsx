@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { getAuthToken } from '../../lib/apiClient';
 import { getStoredUser, login as loginRequest, logout as logoutRequest } from './authService';
 

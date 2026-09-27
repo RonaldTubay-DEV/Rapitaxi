@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Bell, AlertTriangle, Info, X, Settings, CheckCircle2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Bell, AlertTriangle, Info, X, CheckCircle2 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 const NotificacionesBell = () => {
   const [isOpen, setIsOpen] = useState(false);

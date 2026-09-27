@@ -6,8 +6,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Carbon\Carbon;
-use App\Models\Aportacion; // <--- 1. Importa la clase nueva
-use App\Models\Vehiculo;
 use App\Traits\TapsActivityWithRequestMeta;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;

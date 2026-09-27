@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { 
   Wrench, Search, Trash2, Loader2, AlertCircle, X, Save,
   Gauge, FileText, Upload, BatteryCharging, CircleDot, ClipboardCheck
@@ -70,7 +70,7 @@ const MantenimientoScreen = () => {
 
   // sigueVigente() descarta una respuesta que llega tarde: si el usuario ya
   // cambio de pagina o de busqueda, aplicarla mostraria datos equivocados.
-  const fetchData = async (sigueVigente = () => true) => {
+  const fetchData = useCallback(async (sigueVigente = () => true) => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem('auth_token');
@@ -89,7 +89,7 @@ const MantenimientoScreen = () => {
       }
     } catch (err) { console.error(err); }
     finally { if (sigueVigente()) setIsLoading(false); }
-  };
+  }, [pagina, searchTerm, statusFilter]);
 
   // Los vehiculos alimentan el selector del formulario, y la bandeja de
   // pendientes no depende de la pagina: ambos se piden una sola vez al entrar.
@@ -112,7 +112,7 @@ const MantenimientoScreen = () => {
     let vigente = true;
     const temporizador = setTimeout(() => { fetchData(() => vigente); }, searchTerm ? 500 : 0);
     return () => { vigente = false; clearTimeout(temporizador); };
-  }, [pagina, searchTerm, statusFilter]);
+  }, [fetchData, searchTerm]);
 
   // Cambiar de filtro o de busqueda siempre vuelve a la primera pagina.
   const handleBuscar = (valor) => {
@@ -461,7 +461,7 @@ const MantenimientoScreen = () => {
         const errorData = await response.json();
         setFormError(getApiErrorMessage(errorData, 'Error al guardar el mantenimiento.'));
       }
-    } catch (err) { setFormError('Error de conexión.'); }
+    } catch { setFormError('Error de conexión.'); }
     finally { setIsSubmitting(false); }
   };
 
@@ -482,7 +482,7 @@ const MantenimientoScreen = () => {
         setMantenimientos(mantenimientos.filter(m => m.id !== id));
         showSuccessToast('Mantenimiento eliminado exitosamente.');
       }
-    } catch (err) { showErrorToast('Error al eliminar.'); }
+    } catch { showErrorToast('Error al eliminar.'); }
   };
 
   const handleStatusChange = async (id, nuevoEstado) => {
@@ -548,7 +548,7 @@ const MantenimientoScreen = () => {
         const err = await response.json();
         showErrorToast(getApiErrorMessage(err, 'Error al actualizar el estado.'));
       }
-    } catch (err) { showErrorToast('Error de conexión.'); }
+    } catch { showErrorToast('Error de conexión.'); }
   };
 
   const handleUploadSubmit = async (e) => {
@@ -678,7 +678,7 @@ const MantenimientoScreen = () => {
 
       const { url } = await response.json();
       window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
+    } catch {
       showErrorToast('No se pudo abrir el comprobante.');
     }
   };

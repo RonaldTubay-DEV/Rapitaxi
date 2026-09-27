@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\LibroContable;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use App\Services\ArchivoPrivado;
 
 class LibroContableController extends Controller
 {
@@ -50,16 +50,10 @@ class LibroContableController extends Controller
     {
         $libro = LibroContable::findOrFail($id);
 
-        $base = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim((string) $libro->titulo));
-        $base = trim($base, '_');
-        $fileName = ($base !== '' ? $base : 'libro') . '.pdf';
+        $nombreArchivo = ArchivoPrivado::nombreSeguro($libro->titulo, 'pdf', 'libro');
 
-        $url = Storage::disk('s3')->temporaryUrl(
-            $libro->archivo_ruta,
-            now()->addMinutes(5),
-            ['ResponseContentDisposition' => 'inline; filename="' . $fileName . '"']
-        );
-
-        return response()->json(['url' => $url], 200);
+        return response()->json([
+            'url' => ArchivoPrivado::enlaceTemporal($libro->archivo_ruta, $nombreArchivo),
+        ], 200);
     }
 }

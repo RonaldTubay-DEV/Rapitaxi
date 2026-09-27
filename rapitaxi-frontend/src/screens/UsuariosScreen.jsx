@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, Edit, Loader2, Plus, Save, Search, Trash2, UserPlus, X } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
@@ -43,7 +43,7 @@ const UsuariosScreen = () => {
     return err.data?.message || err.message || fallback;
   };
 
-  const fetchUsuarios = async () => {
+  const fetchUsuarios = useCallback(async () => {
     setIsLoading(true);
     setError('');
 
@@ -54,11 +54,11 @@ const UsuariosScreen = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchUsuarios();
-  }, []);
+  }, [fetchUsuarios]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;

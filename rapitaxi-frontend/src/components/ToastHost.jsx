@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 const TOAST_DURATION_MS = 3500;

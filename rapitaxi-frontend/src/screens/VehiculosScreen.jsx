@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Car, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, Edit, Trash2, Loader2, AlertCircle, X, Save, Plus } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
@@ -48,7 +48,7 @@ const VehiculosScreen = () => {
       } else {
         setError('Error al cargar la información.');
       }
-    } catch (err) { setError('Error de conexión.'); }
+    } catch { setError('Error de conexión.'); }
     finally { setIsLoading(false); }
   };
 
@@ -119,7 +119,7 @@ const VehiculosScreen = () => {
       } else {
         setFormError(data.message || 'Error al guardar el vehículo.');
       }
-    } catch (err) { setFormError('Error de conexión.'); }
+    } catch { setFormError('Error de conexión.'); }
     finally { setIsSubmitting(false); }
   };
 
@@ -135,7 +135,7 @@ const VehiculosScreen = () => {
         setVehiculos(vehiculos.filter(v => v.id !== id));
         showSuccessToast('Vehiculo eliminado exitosamente.');
       }
-    } catch (err) { showErrorToast('Error al eliminar.'); }
+    } catch { showErrorToast('Error al eliminar.'); }
   };
 
   const vehiculosFiltrados = vehiculos.filter(v => {

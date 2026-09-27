@@ -373,7 +373,7 @@ cambiar:
 | Frecuencias de mantenimiento | 3 a 12 meses según el tipo | Pantalla de Configuración |
 | Vencimiento de sesión | 12 horas | `SANCTUM_EXPIRATION_MINUTES` |
 | Inactividad antes del aviso | 18 minutos + 2 de cuenta regresiva | `SessionIdleWatcher.jsx` |
-| Vigencia de los enlaces de archivos | 5 minutos | Cada controlador con `temporaryUrl` |
+| Vigencia de los enlaces de archivos | 5 minutos | `ArchivoPrivado::MINUTOS_DE_VIGENCIA` |
 | Longitud mínima de contraseña | 8 con letras y números | `AppServiceProvider` |
 
 > **Incoherencia conocida:** el dashboard usa un umbral fijo de 6 meses para

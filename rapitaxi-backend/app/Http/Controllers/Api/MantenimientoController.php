@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Services\ArchivoPrivado;
 
 class MantenimientoController extends Controller
 {
@@ -302,15 +303,14 @@ class MantenimientoController extends Controller
             return response()->json(['message' => 'Comprobante no encontrado.'], 404);
         }
 
-        $extension = strtolower(pathinfo($mantenimiento->comprobante_ruta, PATHINFO_EXTENSION));
-        $fileName = 'comprobante_' . $mantenimiento->id . ($extension !== '' ? '.' . $extension : '');
-
-        $url = Storage::disk('s3')->temporaryUrl(
-            $mantenimiento->comprobante_ruta,
-            now()->addMinutes(5),
-            ['ResponseContentDisposition' => 'inline; filename="' . $fileName . '"']
+        $nombreArchivo = ArchivoPrivado::nombreSeguro(
+            'comprobante_' . $mantenimiento->id,
+            pathinfo($mantenimiento->comprobante_ruta, PATHINFO_EXTENSION),
+            'comprobante'
         );
 
-        return response()->json(['url' => $url], 200);
+        return response()->json([
+            'url' => ArchivoPrivado::enlaceTemporal($mantenimiento->comprobante_ruta, $nombreArchivo),
+        ], 200);
     }
 }

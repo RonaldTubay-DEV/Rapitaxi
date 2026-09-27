@@ -73,6 +73,7 @@ rapitaxi-backend/
 │   ├── Rules/
 │   │   └── CedulaEcuatoriana.php Validación del dígito verificador
 │   ├── Services/
+│   │   ├── ArchivoPrivado.php    Enlaces firmados a los archivos de R2
 │   │   └── PlanMantenimiento.php Cálculo del estado de mantenimiento por unidad
 │   ├── Traits/
 │   │   └── TapsActivityWithRequestMeta.php   Agrega IP y navegador a la auditoría
@@ -97,9 +98,15 @@ negocio y devuelven JSON. Son la capa donde vive casi toda la lógica.
 en masa (`$fillable`), qué campos se ocultan al serializar (`$hidden`) y qué se
 audita (`getActivitylogOptions`).
 
-**Servicios.** Lógica que no pertenece a un solo controlador. Hoy hay uno:
-`PlanMantenimiento`, que calcula el estado de cada unidad y es consumido tanto por
-el portal del socio como por las pruebas.
+**Servicios.** Lógica que no pertenece a un solo controlador. Hoy hay dos:
+
+- `PlanMantenimiento` calcula el estado de cada unidad y lo consumen tanto el
+  portal del socio como las pruebas.
+- `ArchivoPrivado` arma los enlaces firmados a R2 y los nombres de descarga.
+  Los cuatro controladores que entregan archivos (expedientes, libros contables,
+  comprobantes de aportación y respaldos de mantenimiento) repetían el plazo, la
+  cabecera y la forma de la respuesta; cambiar el plazo obligaba a acordarse de
+  los cuatro. Ahora el plazo es la constante `MINUTOS_DE_VIGENCIA`.
 
 **Middleware.** Se ejecuta antes o después de cada petición:
 

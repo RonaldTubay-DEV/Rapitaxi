@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Upload, Trash2, Loader2, AlertCircle, FileText, X, Save, Search, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { BookOpen, Upload, Trash2, Loader2, AlertCircle, FileText, X, Search, Download } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
@@ -78,7 +78,7 @@ const LibrosContablesScreen = () => {
         const errData = await response.json();
         setFormError(errData.message || 'Error al subir el archivo.');
       }
-    } catch (err) { setFormError('Error de conexión.'); }
+    } catch { setFormError('Error de conexión.'); }
     finally { setIsSubmitting(false); }
   };
 
@@ -94,7 +94,7 @@ const LibrosContablesScreen = () => {
 
       const { url } = await response.json();
       window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
+    } catch {
       showErrorToast('No se pudo abrir el documento.');
     }
   };
@@ -109,7 +109,7 @@ const LibrosContablesScreen = () => {
       });
       setLibros(libros.filter(l => l.id !== id));
       showSuccessToast('Libro contable eliminado exitosamente.');
-    } catch (err) { showErrorToast('Error al eliminar'); }
+    } catch { showErrorToast('Error al eliminar'); }
   };
 
   const librosFiltrados = libros.filter(l => 

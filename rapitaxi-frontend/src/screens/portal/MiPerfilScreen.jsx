@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, Save, CarFront, AlertCircle, Phone, Mail, MapPin, IdCard } from 'lucide-react';
 import { apiClient, ApiError } from '../../lib/apiClient';
 import { showErrorToast, showSuccessToast } from '../../utils/feedback';

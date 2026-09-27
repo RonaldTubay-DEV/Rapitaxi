@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AlertTriangle, HelpCircle } from 'lucide-react';
 
 const CLOSE_ANIMATION_MS = 180;

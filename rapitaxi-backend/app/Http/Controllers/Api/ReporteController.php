@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
-use App\Models\Aportacion; // <--- 1. Importamos el modelo oficial de aportaciones
+use App\Models\Aportacion;
 use Carbon\Carbon;
 
 class ReporteController extends Controller

@@ -95,8 +95,9 @@ combinar ambos criterios (lo que ocurra primero).
 
 | Problema | Impacto |
 |---|---|
-| Pantallas que llaman a `fetch` directamente | Inconsistencia; mitigado con `sessionGuard.js` |
-| Errores de ESLint preexistentes | `React` sin usar, variables `err` sin usar, `setState` en efectos |
+| 41 llamadas a `fetch` que no pasan por `apiClient` | Cada pantalla repite el token, las cabeceras y el manejo de error; mitigado con `sessionGuard.js` |
+| 11 avisos de `set-state-in-effect` | Un render extra al montar; no son errores de comportamiento |
+| `AuthContext.jsx` exporta componente y hook juntos | El recargado en caliente de Vite no funciona en ese archivo |
 | Sin pruebas automatizadas | Toda verificación es manual |
 | Tablas con desplazamiento horizontal en móvil | Aceptable pero mejorable con tarjetas |
 
@@ -206,6 +207,15 @@ que decidir qué se digitaliza y qué no.
 ---
 
 ## 6. Mejoras sugeridas
+
+> **Limpieza de código (27/09/2026).** Se quitaron 27 `import React` que React 19
+> ya no necesita, 4 iconos importados y nunca usados, y 23 `catch (err)` donde `err`
+> no se leía. Las cinco funciones de carga que un efecto usaba sin declararlas como
+> dependencia pasaron a `useCallback`. En el backend, los cuatro controladores que
+> entregan archivos dejaron de repetir la lógica del enlace firmado: ahora está en
+> `ArchivoPrivado`. ESLint bajó de 67 errores a 12 y de 5 avisos a 0. **El paquete
+> compilado no cambió** (476,3 kB antes y después): los iconos sin usar ya los
+> descartaba el empaquetador, así que la ganancia es de legibilidad, no de tamaño.
 
 > **Alineación con el anteproyecto (26/09/2026).** Se contrastó el documento de
 > tesis contra lo implementado y se cerraron tres brechas: los mantenimientos

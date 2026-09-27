@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { Plus, Search, Edit, Trash2, Loader2, AlertCircle, X, Save, KeyRound, UserCheck, UserX, UserSearch, RotateCcw, Archive } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
@@ -63,7 +63,7 @@ const SociosScreen = () => {
   // ==========================================
   // FUNCIONES DE API
   // ==========================================
-  const fetchSocios = async (query = '', eliminados = verEliminados) => {
+  const fetchSocios = useCallback(async (query = '', eliminados = verEliminados) => {
     setIsLoading(true);
     setError('');
     try {
@@ -84,19 +84,19 @@ const SociosScreen = () => {
       } else {
         setError('Error al cargar los socios.');
       }
-    } catch (err) {
+    } catch {
       setError('Error de conexión con el servidor.');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [verEliminados]);
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       fetchSocios(searchTerm, verEliminados);
     }, 500);
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, verEliminados]);
+  }, [fetchSocios, searchTerm, verEliminados]);
 
   const handleRestaurar = async (socio) => {
     if (!(await confirmDialog(`¿Reactivar a ${socio.nombre} con todo su historial?`))) return;
@@ -238,7 +238,7 @@ const SociosScreen = () => {
           setFormError(data.message || 'Error al guardar.');
         }
       }
-    } catch (err) {
+    } catch {
       setFormError('Error de conexión.');
     } finally {
       setIsSubmitting(false);

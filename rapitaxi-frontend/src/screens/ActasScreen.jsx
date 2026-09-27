@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { FileText, Printer, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showSuccessToast } from '../utils/feedback';
@@ -56,7 +56,7 @@ const ActasScreen = () => {
 
         setError(errorData.message || 'No se pudo generar el cuadro maestro. Intenta nuevamente o revisa las aportaciones registradas.');
       }
-    } catch (err) {
+    } catch {
       setError('Error de conexión con el servidor.');
     }
     finally { setLoading(false); }

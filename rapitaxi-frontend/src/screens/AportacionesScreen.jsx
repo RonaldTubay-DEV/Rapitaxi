@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar, Eye, Check, Ban } from 'lucide-react';
+import { useCallback, useState, useEffect } from 'react';
+import { Search, Trash2, Loader2, AlertCircle, X, Save, DollarSign, Calendar, Eye, Check, Ban } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
 import { confirmDialog } from '../utils/confirmDialog';
@@ -60,7 +60,7 @@ const AportacionesScreen = () => {
   // sigueVigente() permite descartar una respuesta que llega tarde: si el
   // usuario ya cambio de pagina o de busqueda, aplicarla mostraria datos que
   // no corresponden a lo que pidio.
-  const fetchData = async (sigueVigente = () => true) => {
+  const fetchData = useCallback(async (sigueVigente = () => true) => {
     setIsLoading(true);
     setError('');
     try {
@@ -82,12 +82,12 @@ const AportacionesScreen = () => {
       } else {
         setError('Error al cargar la información. Revisa que el servidor backend esté funcionando.');
       }
-    } catch (err) {
+    } catch {
       if (sigueVigente()) setError('Error de conexión con el servidor.');
     } finally {
       if (sigueVigente()) setIsLoading(false);
     }
-  };
+  }, [pagina, searchTerm, filtroEstado]);
 
   // Los socios alimentan el selector del formulario y el contador de
   // pendientes: no cambian al pasar de pagina, asi que se piden una sola vez.
@@ -110,7 +110,7 @@ const AportacionesScreen = () => {
     let vigente = true;
     const temporizador = setTimeout(() => { fetchData(() => vigente); }, searchTerm ? 500 : 0);
     return () => { vigente = false; clearTimeout(temporizador); };
-  }, [pagina, searchTerm, filtroEstado]);
+  }, [fetchData, searchTerm]);
 
   // Cambiar de filtro o de busqueda siempre vuelve a la primera pagina.
   const handleBuscar = (valor) => {
@@ -166,7 +166,7 @@ const AportacionesScreen = () => {
       } else {
         setFormError(data.message || 'Error al guardar la aportación.');
       }
-    } catch (err) {
+    } catch {
       setFormError('Error de conexión.');
     } finally {
       setIsSubmitting(false);
@@ -183,7 +183,7 @@ const AportacionesScreen = () => {
       });
       setAportaciones(aportaciones.filter(a => a.id !== id));
       showSuccessToast('Aportacion anulada exitosamente.');
-    } catch (err) { showErrorToast('Error al eliminar.'); }
+    } catch { showErrorToast('Error al eliminar.'); }
   };
 
   // El comprobante lo sirve R2 directo via una URL firmada (5 min), no pasa

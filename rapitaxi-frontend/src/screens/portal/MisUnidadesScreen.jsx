@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, CarFront, AlertTriangle, CheckCircle2, Clock, Upload, X, AlertCircle, FileQuestion, Wrench, Calendar } from 'lucide-react';
 import { API_URL } from '../../apiConfig';
 import { apiClient } from '../../lib/apiClient';

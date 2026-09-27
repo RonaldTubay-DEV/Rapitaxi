@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, BellRing, Wrench, Save, Loader2 } from 'lucide-react';
 import { areToastsEnabled, setToastsEnabled, showSuccessToast, showErrorToast } from '../utils/feedback';
 import { apiClient, ApiError } from '../lib/apiClient';

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Users, Car, Wrench, ShieldCheck, TrendingUp,
   Clock, AlertTriangle, Loader2
@@ -22,7 +22,7 @@ const DashboardScreen = () => {
       } else {
         setError('Error al cargar las métricas.');
       }
-    } catch (err) { setError('Error de conexión con el servidor.'); }
+    } catch { setError('Error de conexión con el servidor.'); }
     finally { setIsLoading(false); }
   };
 

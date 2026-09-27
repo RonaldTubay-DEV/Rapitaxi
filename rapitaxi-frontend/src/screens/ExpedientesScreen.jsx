@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Users, FolderOpen, Search, FileText,
   Upload, Trash2, Loader2, AlertCircle, X, ExternalLink,
@@ -153,7 +153,7 @@ const ExpedientesScreen = () => {
         const primerError = error?.errors ? Object.values(error.errors)[0][0] : null;
         setUploadError(primerError || error?.message || 'Error al subir el archivo. Intente con un formato válido.');
       }
-    } catch (err) {
+    } catch {
       setUploadError('Error de conexión.');
     } finally { setIsUploading(false); }
   };
@@ -170,7 +170,7 @@ const ExpedientesScreen = () => {
         setExpedientes(expedientes.filter(e => e.id !== id));
         showSuccessToast('Documento eliminado exitosamente.');
       }
-    } catch (err) { showErrorToast('Error al eliminar.'); }
+    } catch { showErrorToast('Error al eliminar.'); }
   };
 
   // El backend devuelve un enlace temporal (5 min) que apunta directo al
@@ -188,7 +188,7 @@ const ExpedientesScreen = () => {
 
       const { url } = await response.json();
       window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
+    } catch {
       showErrorToast('No se pudo abrir el documento.');
     }
   };

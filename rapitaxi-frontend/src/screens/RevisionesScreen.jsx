@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  ClipboardCheck, Search, Edit, Trash2, Loader2, AlertCircle, 
-  X, Save, Plus, Calendar, CheckCircle, XCircle, Clock 
+import { useCallback, useState, useEffect } from 'react';
+import {
+  Search, Edit, Trash2, Loader2, AlertCircle,
+  X, Save, Plus, Calendar, CheckCircle, XCircle, Clock,
 } from 'lucide-react';
 import { API_URL } from '../apiConfig';
 import { showErrorToast, showSuccessToast } from '../utils/feedback';
@@ -56,7 +56,7 @@ const RevisionesScreen = () => {
   // ==========================================
   // sigueVigente() descarta una respuesta que llega tarde: si el usuario ya
   // cambio de pagina o de busqueda, aplicarla mostraria datos equivocados.
-  const fetchData = async (sigueVigente = () => true) => {
+  const fetchData = useCallback(async (sigueVigente = () => true) => {
     setIsLoading(true);
     setError('');
     try {
@@ -77,12 +77,12 @@ const RevisionesScreen = () => {
       } else {
         setError('Error al cargar la bitácora de revisiones.');
       }
-    } catch (err) {
+    } catch {
       if (sigueVigente()) setError('Error de conexión con el servidor.');
     } finally {
       if (sigueVigente()) setIsLoading(false);
     }
-  };
+  }, [pagina, searchTerm]);
 
   // Al escribir en el buscador se espera medio segundo antes de consultar,
   // para no disparar una peticion por cada tecla.
@@ -101,7 +101,7 @@ const RevisionesScreen = () => {
     let vigente = true;
     const temporizador = setTimeout(() => { fetchData(() => vigente); }, searchTerm ? 500 : 0);
     return () => { vigente = false; clearTimeout(temporizador); };
-  }, [pagina, searchTerm]);
+  }, [fetchData, searchTerm]);
 
   // Una busqueda nueva siempre arranca en la primera pagina.
   const handleBuscar = (valor) => {
@@ -197,7 +197,7 @@ const RevisionesScreen = () => {
       } else {
         setFormError(data.message || 'Error al guardar la revisión.');
       }
-    } catch (err) {
+    } catch {
       setFormError('Error de conexión.');
     } finally {
       setIsSubmitting(false);
@@ -216,7 +216,7 @@ const RevisionesScreen = () => {
         setRevisiones(revisiones.filter(r => r.id !== id));
         showSuccessToast('Tramite legal eliminado exitosamente.');
       }
-    } catch (err) { showErrorToast('Error de conexión.'); }
+    } catch { showErrorToast('Error de conexión.'); }
   };
 
   // El filtrado lo hace el servidor (ver fetchData): la lista ya llega filtrada.

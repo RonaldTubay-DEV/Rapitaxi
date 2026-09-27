@@ -8,6 +8,7 @@ use App\Models\Socio;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use App\Services\ArchivoPrivado;
 
 class ExpedienteController extends Controller
 {
@@ -175,18 +176,14 @@ class ExpedienteController extends Controller
             return response()->json(['message' => 'Documento no encontrado.'], 404);
         }
 
-        $base = preg_replace('/[^A-Za-z0-9_-]+/', '_', trim((string) $expediente->nombre_documento));
-        $base = trim((string) $base, '_');
-        $base = $base !== '' ? $base : 'documento';
-        $extension = strtolower((string) $expediente->tipo_documento);
-        $fileName = $extension !== '' ? $base . '.' . $extension : $base;
-
-        $url = Storage::disk('s3')->temporaryUrl(
-            $expediente->ruta_archivo,
-            now()->addMinutes(5),
-            ['ResponseContentDisposition' => 'inline; filename="' . $fileName . '"']
+        $nombreArchivo = ArchivoPrivado::nombreSeguro(
+            $expediente->nombre_documento,
+            $expediente->tipo_documento,
+            'documento'
         );
 
-        return response()->json(['url' => $url], 200);
+        return response()->json([
+            'url' => ArchivoPrivado::enlaceTemporal($expediente->ruta_archivo, $nombreArchivo),
+        ], 200);
     }
 }
