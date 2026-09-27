@@ -650,6 +650,71 @@ class SeguridadApiTest extends TestCase
         $this->assertSame(1, $kpis['vehiculos_al_dia']);
     }
 
+    // La RTV vale hasta la fecha que dice el certificado, no doce meses contados
+    // desde la revision. El portal del socio ya avisaba con la fecha real; el
+    // dashboard seguia con la ventana fija y podia contar como al dia una unidad
+    // con la revision vencida.
+    public function test_una_unidad_con_la_rtv_vencida_no_cuenta_como_al_dia(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $vehiculo = $this->crearVehiculo($socio);
+
+        \App\Models\Revision::create([
+            'vehiculo_id' => $vehiculo->id,
+            'fecha_revision' => now()->subMonths(2)->toDateString(),
+            'fecha_vencimiento' => now()->subDay()->toDateString(),
+            'tipo' => 'RTV', 'estado' => 'Aprobada',
+        ]);
+
+        $kpis = $this->api($token)->getJson('/api/dashboard/stats')->assertOk()->json('kpis');
+
+        $this->assertSame(0, $kpis['vehiculos_al_dia'], 'una RTV vencida no deberia contar como al dia');
+    }
+
+    public function test_una_unidad_con_la_rtv_vigente_cuenta_al_dia_aunque_la_revision_sea_vieja(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $vehiculo = $this->crearVehiculo($socio);
+
+        \App\Models\Revision::create([
+            'vehiculo_id' => $vehiculo->id,
+            'fecha_revision' => now()->subMonths(14)->toDateString(),
+            'fecha_vencimiento' => now()->addDays(30)->toDateString(),
+            'tipo' => 'RTV', 'estado' => 'Aprobada',
+        ]);
+
+        $kpis = $this->api($token)->getJson('/api/dashboard/stats')->assertOk()->json('kpis');
+
+        $this->assertSame(1, $kpis['vehiculos_al_dia'], 'si el certificado sigue vigente, la unidad esta al dia');
+    }
+
+    // Las revisiones cargadas antes de que existiera la columna no tienen fecha
+    // de vencimiento. Para esas se mantiene la ventana de doce meses, que es lo
+    // unico que se puede deducir.
+    public function test_una_revision_sin_fecha_de_vencimiento_usa_la_ventana_de_doce_meses(): void
+    {
+        $token = $this->tokenDe($this->crearUsuario('admin'));
+        [$socio] = $this->crearSocioConCuenta();
+        $reciente = $this->crearVehiculo($socio, ['numero_vehiculo' => '012-01', 'placa' => 'AAA-1111']);
+        $antigua = $this->crearVehiculo($socio, ['numero_vehiculo' => '012-02', 'placa' => 'BBB-2222']);
+
+        \App\Models\Revision::create([
+            'vehiculo_id' => $reciente->id,
+            'fecha_revision' => now()->subMonths(2)->toDateString(),
+            'tipo' => 'RTV', 'estado' => 'Aprobada',
+        ]);
+        \App\Models\Revision::create([
+            'vehiculo_id' => $antigua->id,
+            'fecha_revision' => now()->subMonths(14)->toDateString(),
+            'tipo' => 'RTV', 'estado' => 'Aprobada',
+        ]);
+
+        $kpis = $this->api($token)->getJson('/api/dashboard/stats')->assertOk()->json('kpis');
+
+        $this->assertSame(1, $kpis['vehiculos_al_dia']);
+    }
     public function test_los_pendientes_de_taller_ignoran_vehiculos_eliminados(): void
     {
         $token = $this->tokenDe($this->crearUsuario('admin'));

@@ -11,9 +11,11 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    // Una revision tecnica vehicular (RTV) vale un año: pasado ese tiempo la
-    // unidad deja de contar como "al dia" aunque alguna vez la haya aprobado.
-    private const MESES_VIGENCIA_REVISION = 12;
+    // Cada revision aprobada guarda hasta cuando vale, que es lo que dice el
+    // certificado. Esta ventana es solo el respaldo para las revisiones que se
+    // cargaron antes de que existiera esa columna: de esas lo unico que se puede
+    // deducir es que una RTV dura alrededor de un año.
+    private const MESES_VIGENCIA_SIN_FECHA = 12;
 
     // Una unidad que lleva mas de medio año sin ningun mantenimiento
     // registrado es la que hay que ir a revisar: el socio paga sus propios
@@ -39,9 +41,20 @@ class DashboardController extends Controller
                 ->where('fecha_mantenimiento', '>=', $hoy->copy()->subMonths(self::MESES_SIN_MANTENIMIENTO)->toDateString());
         })->count();
 
+        // Una unidad esta al dia si alguna de sus revisiones aprobadas sigue
+        // vigente. Se mira la fecha de vencimiento real; solo si falta se cae a la
+        // ventana de doce meses. Antes se usaba siempre la ventana, asi que una
+        // unidad con la RTV vencida hace poco contaba como al dia y una con el
+        // certificado todavia vigente pero revisado hace mas de un año no contaba.
         $vehiculosAlDia = Revision::where('estado', 'Aprobada')
-            ->where('fecha_revision', '>=', $hoy->copy()->subMonths(self::MESES_VIGENCIA_REVISION)->toDateString())
             ->whereHas('vehiculo')
+            ->where(function ($query) use ($hoy) {
+                $query->where('fecha_vencimiento', '>=', $hoy->toDateString())
+                    ->orWhere(function ($sinFecha) use ($hoy) {
+                        $sinFecha->whereNull('fecha_vencimiento')
+                            ->where('fecha_revision', '>=', $hoy->copy()->subMonths(self::MESES_VIGENCIA_SIN_FECHA)->toDateString());
+                    });
+            })
             ->distinct()
             ->count('vehiculo_id');
 

@@ -15,7 +15,7 @@ Inventario honesto de qué está terminado, qué quedó a medias y qué falta.
 | Expedientes | ✅ Completo | Clasificados por tipo, con control de vencimientos y completitud |
 | Aportaciones | ✅ Completo | Pago manual y comprobante con aprobación |
 | Mantenimiento | ✅ Completo | Preventivo/correctivo, plan de frecuencias y aprobación |
-| Revisiones (RTV) | ✅ Completo | Con fecha de vencimiento y aviso al socio |
+| Revisiones (RTV) | ✅ Completo | Vencimiento real, aviso al socio y dashboard coherente |
 | Libros contables | ✅ Completo | |
 | Dashboard | ✅ Completo | 4 indicadores más estado legal y actividad |
 | Cuadro maestro (Actas) | ✅ Completo | Con impresión |
@@ -110,14 +110,10 @@ definiciones distintas de "unidad descuidada" conviviendo.
 **Recomendación:** que el dashboard pase a contar unidades con algún mantenimiento
 vencido según el plan.
 
-Lo mismo ocurre con la RTV: desde el 26/09/2026 cada revisión aprobada guarda su
-**fecha de vencimiento real**, y el portal del socio avisa con ella. Pero el
-indicador "Estatus Legal" del dashboard sigue usando una ventana fija de **12
-meses** desde la fecha de revisión. Son dos criterios distintos de "RTV vigente".
-
-**Recomendación:** que el dashboard use `fecha_vencimiento` cuando exista y deje
-la ventana de 12 meses solo como respaldo para las revisiones antiguas que se
-cargaron sin ella.
+La incoherencia equivalente en la RTV **ya se resolvió** (27/09/2026): el
+dashboard y el portal usan los dos la fecha de vencimiento del certificado, y la
+ventana de 12 meses quedó solo como respaldo para las revisiones cargadas sin
+fecha.
 
 ---
 
@@ -208,6 +204,15 @@ que decidir qué se digitaliza y qué no.
 
 ## 6. Mejoras sugeridas
 
+> **Coherencia de la RTV (27/09/2026).** El dashboard dejó de contar la vigencia
+> con una ventana fija de 12 meses y pasó a usar la fecha de vencimiento del
+> certificado, la misma que ya usaba el portal. Antes se equivocaba en los dos
+> sentidos: contaba como al día una unidad con la RTV vencida hace poco, y no
+> contaba una con el certificado vigente pero revisada hace más de un año.
+> Verificado en pantalla: con dos unidades (una vencida ayer, otra vigente diez
+> meses más) el dashboard marca 50% y el portal dice *"vencida hace 1 día"* y
+> *"vigente hasta 27/7/2027"*. Antes el dashboard habría dicho 100%.
+
 > **Limpieza de código (27/09/2026).** Se quitaron 27 `import React` que React 19
 > ya no necesita, 4 iconos importados y nunca usados, y 23 `catch (err)` donde `err`
 > no se leía. Las cinco funciones de carga que un efecto usaba sin declararlas como
@@ -268,7 +273,7 @@ que decidir qué se digitaliza y qué no.
 
 **Lo que funciona bien.** El núcleo del sistema está completo y probado: socios,
 vehículos, documentos, aportaciones y mantenimiento, con separación estricta de
-roles, auditoría completa y 107 pruebas que cubren los caminos críticos, los
+roles, auditoría completa y 110 pruebas que cubren los caminos críticos, los
 errores encontrados y lo que el anteproyecto promete.
 
 **Lo que hay que atender antes de producción real.** Respaldos de la base de datos,

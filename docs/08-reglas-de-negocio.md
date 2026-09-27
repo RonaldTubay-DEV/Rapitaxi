@@ -273,14 +273,23 @@ El socio ve el aviso en su portal, por unidad: *"Revisión técnica (RTV): vence
 **Solo las aprobadas tienen vigencia.** Una revisión rechazada o pendiente no
 habilita al vehículo, caduque o no, así que no reporta estado.
 
-### Vigencia de un año en el dashboard
+### El dashboard usa la misma fecha que el portal
 
-El dashboard considera "al día" a una unidad con revisión **aprobada** dentro de
-los últimos 12 meses.
+El indicador **Estatus Legal (RTV)** cuenta como "al día" a la unidad que tiene
+alguna revisión aprobada **todavía vigente**, comparando contra su fecha de
+vencimiento. Es el mismo criterio que ve el socio en su portal, así que los dos
+números no pueden contradecirse.
 
-> Este plazo es un supuesto que quedó de antes de registrar la fecha de caducidad
-> real. Ahora que cada revisión trae la suya, el dashboard debería usarla en vez
-> del plazo fijo. Es una incoherencia pendiente de resolver.
+**El plazo de 12 meses quedó solo como respaldo.** Se aplica únicamente a las
+revisiones cargadas antes de que existiera la columna de vencimiento: de esas lo
+único deducible es que una RTV dura alrededor de un año. Una revisión nueva no
+puede quedar sin fecha, porque el formulario la exige al aprobarla.
+
+> **Antes de este cambio** el dashboard usaba siempre la ventana de 12 meses
+> contados desde la revisión. Eso producía dos errores opuestos: una unidad con la
+> RTV vencida hace poco seguía contando como al día, y una con el certificado
+> todavía vigente pero revisada hace más de un año no contaba. Las dos situaciones
+> están cubiertas por pruebas.
 
 ### Una revisión aprobada o rechazada ya ocurrió
 
@@ -367,7 +376,7 @@ cambiar:
 
 | Supuesto | Valor actual | Dónde se cambia |
 |---|---|---|
-| Vigencia de la RTV (dashboard) | 12 meses | `DashboardController` |
+| Vigencia de la RTV sin fecha registrada | 12 meses | `DashboardController` |
 | Aviso antes de vencer la RTV | 30 días | `Revision::DIAS_AVISO_VENCIMIENTO` |
 | "Unidad descuidada" | 6 meses sin trabajos | `DashboardController` |
 | Frecuencias de mantenimiento | 3 a 12 meses según el tipo | Pantalla de Configuración |

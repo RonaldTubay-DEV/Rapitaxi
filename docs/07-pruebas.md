@@ -1,6 +1,6 @@
 # 07 · Pruebas automatizadas
 
-**107 pruebas · 468 verificaciones · ~15 segundos de ejecución**
+**110 pruebas · 474 verificaciones · ~15 segundos de ejecución**
 
 ---
 
@@ -29,7 +29,7 @@ tests/
 ├── Concerns/
 │   └── CreaEscenarioApi.php        Utilidades compartidas
 ├── Feature/
-│   ├── SeguridadApiTest.php        68 pruebas de acceso, datos, validación y paginación
+│   ├── SeguridadApiTest.php        71 pruebas de acceso, datos, validación y paginación
 │   ├── PlanMantenimientoTest.php   19 pruebas del plan de mantenimiento
 │   ├── ExpedienteClasificadoTest.php  13 pruebas de clasificación y vencimientos
 │   └── ObjetivosDelProyectoTest.php    7 pruebas de lo que promete el anteproyecto
@@ -110,7 +110,12 @@ Evita repetir el montaje en cada prueba:
 ### Dashboard
 
 - Cuenta solo socios activos.
-- "Al día" exige revisión aprobada reciente de un vehículo vigente.
+- "Al día" exige revisión aprobada de un vehículo vigente.
+- Una unidad con la RTV **vencida** no cuenta como al día, aunque la hayan
+  revisado hace dos meses.
+- Una unidad con la RTV **vigente** sí cuenta, aunque la revisión sea de hace más
+  de un año.
+- Una revisión sin fecha de vencimiento sigue usando la ventana de doce meses.
 - Los pendientes de taller ignoran vehículos eliminados.
 - No queda ningún rastro de costos.
 - Cuenta correctamente las unidades sin mantenimiento reciente.

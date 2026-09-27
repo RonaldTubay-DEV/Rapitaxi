@@ -81,7 +81,8 @@ Es la pantalla de inicio. Muestra cuatro indicadores:
 Debajo verás:
 
 - **Estatus Legal (RTV)**: qué porcentaje de la flota tiene la revisión técnica
-  vigente. Solo cuenta las revisiones aprobadas en los últimos 12 meses.
+  vigente, según la fecha de vencimiento de cada certificado. Es el mismo
+  criterio que ve el socio en su portal.
 - **Últimos Movimientos en Taller**: los cinco trabajos más recientes.
 
 ### 2.2 Socios
@@ -292,9 +293,9 @@ la de la revisión.
 Una revisión Aprobada o Rechazada no puede tener fecha futura (ya ocurrió). Una
 Pendiente sí, porque puede estar agendada.
 
-> El Dashboard todavía considera "al día" a una unidad con revisión **aprobada
-> dentro de los últimos 12 meses**, sin mirar la fecha de vencimiento registrada.
-> Queda anotado como pendiente en [09 - Estado y pendientes](09-estado-y-pendientes.md).
+> El Dashboard cuenta como "al día" a la unidad cuya revisión aprobada **sigue
+> vigente** según esa fecha de vencimiento. Para las revisiones antiguas que se
+> cargaron sin fecha se sigue suponiendo un año desde la revisión.
 
 ### 2.8 Aportaciones
 

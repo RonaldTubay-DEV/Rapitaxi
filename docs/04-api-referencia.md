@@ -312,7 +312,9 @@ estado de pago y última revisión aprobada. Excluye socios y vehículos elimina
 Definiciones exactas:
 
 - `socios_activos`: socios con `estado = 'Activo'`.
-- `vehiculos_al_dia`: unidades con revisión **aprobada** en los últimos 12 meses.
+- `vehiculos_al_dia`: unidades con alguna revisión **aprobada y todavía vigente**,
+  según su `fecha_vencimiento`. Si la revisión no tiene fecha (se cargó antes de
+  que existiera la columna) se supone un año desde `fecha_revision`.
 - `taller_pendientes`: trabajos programados o en proceso, en vehículos vigentes.
 - `unidades_sin_mantenimiento`: unidades sin ningún trabajo **completado** en los
   últimos 6 meses (incluye las que nunca tuvieron ninguno).

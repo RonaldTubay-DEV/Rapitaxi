@@ -19,13 +19,16 @@ const estiloDe = (estado) => ESTILO_ESTADO[estado] || ESTILO_ESTADO['Al día'];
 
 const formatearFecha = (fecha) => (fecha ? new Date(`${fecha}T00:00:00`).toLocaleDateString() : '—');
 
+// Un dia no son "1 días": el singular se decide en un solo lugar.
+const dias = (n) => (Math.abs(n) === 1 ? 'día' : 'días');
+
 // "vencido hace 12 días" se entiende mejor que un número suelto.
 const textoPlazo = (item) => {
   if (item.estado === 'Sin registro') return 'Nunca se ha registrado este trabajo';
   if (item.dias_restantes === null) return '';
-  if (item.dias_restantes < 0) return `Vencido hace ${Math.abs(item.dias_restantes)} día${Math.abs(item.dias_restantes) === 1 ? '' : 's'}`;
+  if (item.dias_restantes < 0) return `Vencido hace ${Math.abs(item.dias_restantes)} ${dias(item.dias_restantes)}`;
   if (item.dias_restantes === 0) return 'Vence hoy';
-  return `Faltan ${item.dias_restantes} día${item.dias_restantes === 1 ? '' : 's'}`;
+  return `${item.dias_restantes === 1 ? 'Falta' : 'Faltan'} ${item.dias_restantes} ${dias(item.dias_restantes)}`;
 };
 
 const MisUnidadesScreen = () => {
@@ -195,9 +198,9 @@ const MisUnidadesScreen = () => {
                       <p className={`text-xs font-semibold ${estilo.texto}`}>
                         Revisión técnica (RTV):{' '}
                         {rtv.estado === 'Vencida'
-                          ? `vencida hace ${Math.abs(rtv.dias_para_vencer)} días`
+                          ? `vencida hace ${Math.abs(rtv.dias_para_vencer)} ${dias(rtv.dias_para_vencer)}`
                           : rtv.estado === 'Por vencer'
-                            ? `vence en ${rtv.dias_para_vencer} días`
+                            ? `vence en ${rtv.dias_para_vencer} ${dias(rtv.dias_para_vencer)}`
                             : `vigente hasta ${formatearFecha(rtv.fecha_vencimiento)}`}
                       </p>
                     </div>
