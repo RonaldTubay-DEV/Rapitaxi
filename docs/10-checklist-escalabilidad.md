@@ -416,11 +416,16 @@ Empezar por lo crítico: `validators.js`, `ProtectedRoute`, `apiClient` y
 
 ### 5.1 Actualizar dependencias vulnerables
 
-- [ ] **Prioridad: alta · Esfuerzo: medio día con pruebas**
+- [x] **Hecho el 27/09/2026.**
 
-`composer audit` reporta 25 avisos y `npm audit` 9. Se resuelven con
-`composer update` y `npm audit fix`, pero cambian los `.lock`: hay que ejecutar la
-suite completa antes de desplegar.
+`composer audit` reportaba 25 avisos y `npm audit` 9 (6 altos). Las dos auditorías
+dan **cero** ahora. Subieron 47 paquetes en el backend y, en el frontend, React
+Router y Vite dentro de su misma versión mayor. Verificado con las 110 pruebas y
+el barrido del navegador.
+
+> Conviene repetirlo cada cierto tiempo: los avisos aparecen solos, sin que el
+> proyecto cambie. La actualización toca los `.lock`, así que siempre hay que
+> correr la suite completa antes de desplegar.
 
 ### 5.2 Acotar `trustProxies`
 

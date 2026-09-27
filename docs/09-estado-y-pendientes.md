@@ -128,15 +128,19 @@ fecha.
 | **Verificar que R2 sea privado** | Un bucket público expondría cédulas escaneadas |
 | **Cambiar la clave del admin inicial** | |
 
-### Dependencias con vulnerabilidades
+### Dependencias
 
-| Gestor | Avisos | Paquetes |
+**Al día desde el 27/09/2026.** Las dos auditorías dan cero:
+
+| Gestor | Antes | Ahora |
 |---|---|---|
-| `composer audit` | 25 | guzzle, commonmark, laravel/framework, symfony |
-| `npm audit` | 9 | react-router, vite, postcss y otros |
+| `composer audit` | 25 avisos en 7 paquetes | **0** |
+| `npm audit` | 9 avisos (6 altos) | **0** |
 
-Se resuelven con `composer update` y `npm audit fix`, pero cambian los archivos
-`.lock`: hay que probar la suite completa antes de desplegar.
+Conviene volver a correr las dos auditorías cada cierto tiempo: los avisos
+aparecen solos, sin que el proyecto cambie. Cuando aparezcan, la actualización
+modifica los archivos `.lock`, así que hay que correr la suite completa y el
+barrido del navegador antes de desplegar.
 
 ### Sin integración continua
 
@@ -203,6 +207,16 @@ que decidir qué se digitaliza y qué no.
 ---
 
 ## 6. Mejoras sugeridas
+
+> **Dependencias al día (27/09/2026).** Se cerraron los 25 avisos de `composer`
+> y los 9 de `npm`. En el backend subieron 47 paquetes dentro de sus mismas
+> versiones mayores (Laravel 12.60 → 12.69, Guzzle 7.10 → 7.15, CommonMark 2.8
+> → 2.10); las 110 pruebas siguen pasando. En el frontend subieron React Router
+> (7.15 → 7.18) y Vite (8.0 → 8.3), que son el enrutador y el empaquetador, así
+> que se verificaron con el barrido completo del navegador: sin errores y con
+> las mismas mediciones que antes. De los 9 avisos de npm, el único que
+> afectaba a la aplicación desplegada era el de React Router (redirección
+> abierta); los demás eran de herramientas que solo corren al compilar.
 
 > **Coherencia de la RTV (27/09/2026).** El dashboard dejó de contar la vigencia
 > con una ventana fija de 12 meses y pasó a usar la fecha de vencimiento del
@@ -276,8 +290,9 @@ vehículos, documentos, aportaciones y mantenimiento, con separación estricta d
 roles, auditoría completa y 110 pruebas que cubren los caminos críticos, los
 errores encontrados y lo que el anteproyecto promete.
 
-**Lo que hay que atender antes de producción real.** Respaldos de la base de datos,
-verificación de la configuración de producción y actualización de dependencias.
+**Lo que hay que atender antes de producción real.** Respaldos de la base de datos
+y verificación de la configuración de producción (`APP_DEBUG=false` y el bucket
+de R2 privado).
 
 **Lo que falta para que sea un producto vendible.** Los datos de la compañía
 configurables, el modelo de traspasos de acciones y los campos de matrícula con
