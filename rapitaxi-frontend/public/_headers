@@ -1,3 +1,14 @@
+# Los archivos de /assets/ llevan un hash en el nombre: si el contenido cambia,
+# cambia el nombre. Entonces nunca hace falta volver a preguntar por ellos.
+# Sin esta regla Netlify responde "max-age=0, must-revalidate" y el navegador
+# consulta los cuatro archivos en CADA carga, aunque ya los tenga.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# El index.html NO se cachea: es el que dice cual es el hash vigente.
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
 # Cabeceras de seguridad de Netlify para todo el sitio.
 # Si la API cambia de dominio, actualiza tambien "connect-src".
 /*

@@ -208,6 +208,24 @@ que decidir qué se digitaliza y qué no.
 
 ## 6. Mejoras sugeridas
 
+> **Tiempo de carga (27/09/2026).** Medido contra el sitio publicado: la primera
+> visita tardaba 2,96 s y la repetida 1,55 s. Tres causas, dos ya corregidas.
+> **1)** El paquete traía las quince pantallas juntas; ahora cada una se carga al
+> entrar y el arranque bajó de 474 kB a 269 kB. **2)** El logo era un PNG de
+> 640x640 px y 404 kB que se muestra a 40x40; pasó a 160x160 en JPEG, 11 kB.
+> **3)** Netlify respondía `max-age=0, must-revalidate` para archivos que llevan
+> hash en el nombre, así que el navegador volvía a consultar los cuatro en cada
+> carga; ahora son inmutables.
+
+> **Lo que no se tocó y sigue pesando:** el backend arranca con `php artisan serve`,
+> que es el servidor de desarrollo de Laravel, mientras nginx y php-fpm están
+> instalados en la imagen pero sin usar. Tampoco se cachean configuración ni rutas
+> (medido en local: unos 40 ms por petición, ~10%), y las migraciones y los seeders
+> corren en cada arranque. Son cambios en el `Dockerfile` y en esta máquina no hay
+> Docker para probarlos antes de que salgan en vivo, así que quedan pendientes de
+> decidir. A eso se suma que el plan gratuito de Render suspende el servicio tras
+> un rato sin uso: la primera visita después de una pausa paga el arranque entero.
+
 > **Dependencias al día (27/09/2026).** Se cerraron los 25 avisos de `composer`
 > y los 9 de `npm`. En el backend subieron 47 paquetes dentro de sus mismas
 > versiones mayores (Laravel 12.60 → 12.69, Guzzle 7.10 → 7.15, CommonMark 2.8

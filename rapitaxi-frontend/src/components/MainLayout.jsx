@@ -9,7 +9,7 @@ import {
 // (Asegúrate de que la ruta sea correcta según donde guardaste el archivo)
 import NotificacionesBell from './NotificacionesBell';
 import { useAuth } from '../features/auth/AuthContext';
-import logoRapitaxi from '../img/image.png';
+import logoRapitaxi from '../img/logo.jpg';
 import { getTheme, setTheme } from '../utils/theme';
 
 // Estructura del menu: enlaces sueltos y grupos con sub-opciones (acordeon).
